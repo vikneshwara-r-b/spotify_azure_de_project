@@ -2,9 +2,9 @@
 	"name": "adf-spotify-v1",
 	"properties": {
 		"globalParameters": {
-			"adls_storage_account_name": {
+			"adls_source_url": {
 				"type": "string",
-				"value": "adlsspotifyv1"
+				"value": "https://adlsspotifyv1.dfs.core.windows.net/"
 			},
 			"key_vault_url": {
 				"type": "string",
