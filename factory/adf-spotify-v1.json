@@ -13,6 +13,10 @@
 			"sql_source_server_name": {
 				"type": "string",
 				"value": "sql-spotify-v1.database.windows.net"
+			},
+			"sql_source_database_name": {
+				"type": "string",
+				"value": "spotifydb"
 			}
 		}
 	},
