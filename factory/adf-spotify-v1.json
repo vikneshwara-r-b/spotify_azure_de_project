@@ -4,7 +4,7 @@
 		"globalParameters": {
 			"adls_source_url": {
 				"type": "string",
-				"value": "https://adlsspotifyv1.dfs.core.windows.net/"
+				"value": "adlsspotifyv1"
 			},
 			"key_vault_url": {
 				"type": "string",
