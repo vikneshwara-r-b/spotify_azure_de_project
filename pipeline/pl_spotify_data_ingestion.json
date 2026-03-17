@@ -8,9 +8,14 @@
 				"dependsOn": [],
 				"userProperties": [],
 				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.table_list",
+						"type": "Expression"
+					},
+					"isSequential": true,
 					"activities": [
 						{
-							"name": "Get Last Watermark",
+							"name": "Get Old Watermark Value and PK List",
 							"type": "Lookup",
 							"dependsOn": [],
 							"policy": {
@@ -24,6 +29,10 @@
 							"typeProperties": {
 								"source": {
 									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT * FROM dbo.watermarktable WHERE SchemaName = '@{item().tableSchemaName}' AND TableName = '@{item().tableName}'",
+										"type": "Expression"
+									},
 									"queryTimeout": "02:00:00",
 									"partitionOption": "None"
 								},
@@ -34,10 +43,121 @@
 										"db_server_name": {
 											"value": "@pipeline().globalParameters.sql_source_server_name",
 											"type": "Expression"
+										},
+										"db_user_name": {
+											"value": "@pipeline().globalParameters.sql_source_server_username",
+											"type": "Expression"
+										},
+										"db_name": {
+											"value": "@pipeline().globalParameters.sql_source_database_name",
+											"type": "Expression"
+										},
+										"key_vault_url": {
+											"value": "@pipeline().globalParameters.key_vault_url",
+											"type": "Expression"
+										},
+										"db_password_secret_key": {
+											"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
+											"type": "Expression"
 										}
 									}
 								}
 							}
+						},
+						{
+							"name": "Copy MSSQL to Parquet Sink",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Get Old Watermark Value and PK List",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT TOP 5 * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value and PK List').output.firstRow.WatermarkValue}'",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings",
+										"copyBehavior": "FlattenHierarchy"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_source_mssql_query",
+									"type": "DatasetReference",
+									"parameters": {
+										"db_server_name": {
+											"value": "@pipeline().globalParameters.sql_source_server_name",
+											"type": "Expression"
+										},
+										"db_user_name": {
+											"value": "@pipeline().globalParameters.sql_source_server_username",
+											"type": "Expression"
+										},
+										"db_name": {
+											"value": "@pipeline().globalParameters.sql_source_database_name",
+											"type": "Expression"
+										},
+										"key_vault_url": {
+											"value": "@pipeline().globalParameters.key_vault_url",
+											"type": "Expression"
+										},
+										"db_password_secret_key": {
+											"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_adls_sink_parquet",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": "raw",
+										"file_name": {
+											"value": "@concat(item().tableName,'_',utcNow())",
+											"type": "Expression"
+										},
+										"folder_name": {
+											"value": "@item().tableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
 						}
 					]
 				}
