@@ -2,7 +2,7 @@
 	"name": "adf-spotify-v1",
 	"properties": {
 		"globalParameters": {
-			"adls_source_url": {
+			"adls_storage_account_name": {
 				"type": "string",
 				"value": "adlsspotifyv1"
 			},
