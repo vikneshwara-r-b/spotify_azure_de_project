@@ -1,0 +1,133 @@
+# Example Terraform Variables File for Spotify Azure Data Engineering Project
+# 
+# INSTRUCTIONS:
+# 1. Copy this file to terraform.tfvars:
+#    cp terraform.tfvars.example terraform.tfvars
+#
+# 2. Update the values below with your specific configuration
+#
+# 3. DO NOT commit terraform.tfvars to version control!
+#    (it contains sensitive information like passwords)
+
+# ============================================================================
+# General Configuration
+# ============================================================================
+
+location        = "eastus"
+resource_suffix = "20260316"  # Change this to ensure global uniqueness (e.g., YYYYMMDD or your initials)
+project_name    = "spotify"
+environment     = "dev"
+
+# ============================================================================
+# Resource Group
+# ============================================================================
+
+resource_group_name = "rg-spotify-dataeng"
+
+# ============================================================================
+# Azure Data Factory
+# ============================================================================
+
+# Final name will be: adf-spotify-20260316
+adf_name = "adf-spotify"
+
+# Optional: GitHub Integration for ADF source control
+# Set enable_adf_github to true and provide GitHub details
+# Note: You'll need to configure GitHub PAT in ADF Studio after deployment
+enable_adf_github     = true
+adf_github_account    = "vikneshwara-r-b"
+adf_github_repository = "spotify_azure_de_project"
+adf_github_branch     = "main"
+adf_github_root_folder = "/"
+
+# ============================================================================
+# Azure Data Lake Storage Gen2 (ADLS)
+# ============================================================================
+
+# Note: Storage account names must be globally unique, lowercase, no hyphens, 3-24 characters
+# Final name will be: adlsspotify20260316
+storage_account_name = "adlsspotify"
+
+# ADLS Containers for medallion architecture
+adls_containers = ["bronze", "silver", "gold"]
+
+# ============================================================================
+# Azure Databricks
+# ============================================================================
+
+# Final name will be: dbw-spotify-20260316
+databricks_name = "dbw-spotify"
+
+# SKU must be "premium" for Unity Catalog support
+databricks_sku = "premium"
+
+# Enable Unity Catalog (requires premium SKU)
+enable_unity_catalog = true
+
+# ============================================================================
+# Access Connector for Azure Databricks
+# ============================================================================
+
+# Final name will be: ac-databricks-20260316
+access_connector_name = "ac-databricks"
+
+# ============================================================================
+# Azure SQL Server & Database
+# ============================================================================
+
+# Note: Server names must be globally unique
+# Final name will be: sql-spotify-20260316
+sql_server_name   = "sql-spotify"
+sql_database_name = "spotifydb"
+
+# SQL Server Credentials
+# IMPORTANT: Change these to strong, secure values!
+sql_admin_username = "sqladmin"
+sql_admin_password = "P@ssw0rd123!ChangeMe"  # ⚠️ CHANGE THIS!
+
+# Database Configuration
+sql_database_sku        = "Basic"  # Options: Basic, S0, S1, S2, P1, P2, etc.
+sql_database_max_size_gb = 2        # Maximum database size in GB
+
+# ============================================================================
+# Azure Key Vault
+# ============================================================================
+
+# Final name will be: kv-spotify-20260316
+key_vault_name = "kv-spotify"
+key_vault_sku  = "standard"  # Options: standard, premium
+
+# ============================================================================
+# Tags
+# ============================================================================
+
+tags = {
+  Environment = "dev"
+  ManagedBy   = "Terraform"
+  Project     = "SpotifyDataEngineering"
+  Owner       = "YourName"  # Change this to your name
+  CostCenter  = "DataEngineering"
+}
+
+# ============================================================================
+# DEPLOYMENT CHECKLIST
+# ============================================================================
+#
+# Before running terraform apply:
+#
+# ✅ 1. Update resource_suffix to a unique value (e.g., today's date: 20260316)
+# ✅ 2. Change sql_admin_password to a strong password
+# ✅ 3. Update tags.Owner with your name
+# ✅ 4. Verify location is correct (eastus = US-East)
+# ✅ 5. Ensure you're logged in to Azure CLI: az login
+# ✅ 6. Verify your subscription: az account show
+# ✅ 7. Save this file as terraform.tfvars (not .example)
+#
+# After deployment:
+#
+# 🔧 1. Configure Unity Catalog in Databricks (see outputs for guide)
+# 🔧 2. Set up Databricks Asset Bundles with Access Connector details
+# 🔧 3. Create ADF pipelines or import from GitHub
+# 🔧 4. Optionally configure GitHub PAT in ADF Studio
+#
+# ============================================================================
