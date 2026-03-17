@@ -5,6 +5,10 @@
 			"adls_source_url": {
 				"type": "string",
 				"value": "https://adlsspotifyv1.dfs.core.windows.net/"
+			},
+			"key_vault_url": {
+				"type": "string",
+				"value": "https://kv-spotify-v1.vault.azure.net/"
 			}
 		}
 	},
