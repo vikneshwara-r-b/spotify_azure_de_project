@@ -73,6 +73,12 @@
 									"dependencyConditions": [
 										"Succeeded"
 									]
+								},
+								{
+									"activity": "Get New Watermark Value",
+									"dependencyConditions": [
+										"Succeeded"
+									]
 								}
 							],
 							"policy": {
@@ -87,7 +93,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "SELECT TOP 5 * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value and PK List').output.firstRow.WatermarkValue}'",
+										"value": "SELECT TOP 5 * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value and PK List').output.firstRow.WatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",
@@ -148,7 +154,7 @@
 									"parameters": {
 										"container_name": "raw",
 										"file_name": {
-											"value": "@concat(item().tableName,'_',utcNow())",
+											"value": "@concat(item().tableName,'_',formatDateTime(activity('Get New Watermark Value').output.firstRow.NewWatermarkValue,'YYYYMMddHHmmss'),'.parquet')",
 											"type": "Expression"
 										},
 										"folder_name": {
@@ -166,6 +172,56 @@
 									}
 								}
 							]
+						},
+						{
+							"name": "Get New Watermark Value",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT MAX(@{item().Watermark_Column}) AS NewWatermarkValue FROM @{item().tableSchemaName}.@{item().tableName}",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_source_mssql_query",
+									"type": "DatasetReference",
+									"parameters": {
+										"db_server_name": {
+											"value": "@pipeline().globalParameters.sql_source_server_name",
+											"type": "Expression"
+										},
+										"db_user_name": {
+											"value": "@pipeline().globalParameters.sql_source_server_username",
+											"type": "Expression"
+										},
+										"db_name": {
+											"value": "@pipeline().globalParameters.sql_source_database_name",
+											"type": "Expression"
+										},
+										"key_vault_url": {
+											"value": "@pipeline().globalParameters.key_vault_url",
+											"type": "Expression"
+										},
+										"db_password_secret_key": {
+											"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
+											"type": "Expression"
+										}
+									}
+								}
+							}
 						}
 					]
 				}
