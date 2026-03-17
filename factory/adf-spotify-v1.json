@@ -9,6 +9,10 @@
 			"key_vault_url": {
 				"type": "string",
 				"value": "https://kv-spotify-v1.vault.azure.net/"
+			},
+			"sql_source_server_name": {
+				"type": "string",
+				"value": "sql-spotify-v1.database.windows.net"
 			}
 		}
 	},
