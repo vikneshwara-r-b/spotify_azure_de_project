@@ -31,19 +31,14 @@ Value:
 ]
 */
 
-/* Create the following DB in source server*/
-CREATE DATABASE IF NOT EXISTS spotifydb; 
-
-USE DATABASE spotifydb;
-
-DROP TABLE IF EXISTS DimUser;
-DROP TABLE IF EXISTS DimArtist;
-DROP TABLE IF EXISTS DimTrack;
-DROP TABLE IF EXISTS DimDate;
-DROP TABLE IF EXISTS FactStream;
+DROP TABLE IF EXISTS dbo.DimUser;
+DROP TABLE IF EXISTS dbo.DimArtist;
+DROP TABLE IF EXISTS dbo.DimTrack;
+DROP TABLE IF EXISTS dbo.DimDate;
+DROP TABLE IF EXISTS dbo.FactStream;
 
 -- DDL for Spotify Warehouse
-CREATE TABLE DimUser (
+CREATE TABLE dbo.DimUser (
   user_id INT PRIMARY KEY,
   user_name VARCHAR(255),
   country VARCHAR(255),
@@ -53,7 +48,7 @@ CREATE TABLE DimUser (
   updated_at DATETIME
 );
 
-CREATE TABLE DimArtist (
+CREATE TABLE dbo.DimArtist (
   artist_id INT PRIMARY KEY,
   artist_name VARCHAR(255),
   genre VARCHAR(100),
@@ -61,7 +56,7 @@ CREATE TABLE DimArtist (
   updated_at DATETIME
 );
 
-CREATE TABLE DimTrack (
+CREATE TABLE dbo.DimTrack (
   track_id INT PRIMARY KEY,
   track_name VARCHAR(255),
   artist_id INT,
@@ -71,7 +66,7 @@ CREATE TABLE DimTrack (
   updated_at DATETIME
 );
 
-CREATE TABLE DimDate (
+CREATE TABLE dbo.DimDate (
   date_key INT PRIMARY KEY,
   date DATE,
   day INT,
@@ -80,7 +75,7 @@ CREATE TABLE DimDate (
   weekday VARCHAR(20)
 );
 
-CREATE TABLE FactStream (
+CREATE TABLE dbo.FactStream (
   stream_id BIGINT PRIMARY KEY,
   user_id INT,
   track_id INT,
@@ -89,6 +84,8 @@ CREATE TABLE FactStream (
   device_type VARCHAR(50),
   stream_timestamp DATETIME
 );
+
+DROP TABLE IF EXISTS dbo.watermarktable;
 
 /* Create the following watermark metadata table in source*/
 CREATE TABLE dbo.watermarktable (
@@ -110,8 +107,6 @@ VALUES
 SELECT * FROM dbo.watermarktable;
 
 TRUNCATE TABLE dbo.watermarktable;
-
-DROP TABLE dbo.watermarktable;
 
 -- To update latest watermark value in target audit table
 CREATE PROCEDURE [dbo].[usp_write_watermark]
