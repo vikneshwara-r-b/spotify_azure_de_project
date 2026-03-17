@@ -97,7 +97,7 @@
 									"type": "ParquetSink",
 									"storeSettings": {
 										"type": "AzureBlobFSWriteSettings",
-										"copyBehavior": "FlattenHierarchy"
+										"copyBehavior": "PreserveHierarchy"
 									},
 									"formatSettings": {
 										"type": "ParquetWriteSettings"
@@ -153,6 +153,14 @@
 										},
 										"folder_name": {
 											"value": "@item().tableName",
+											"type": "Expression"
+										},
+										"key_vault_url": {
+											"value": "@pipeline().globalParameters.key_vault_url",
+											"type": "Expression"
+										},
+										"adls_source_url": {
+											"value": "@pipeline().globalParameters.adls_source_url",
 											"type": "Expression"
 										}
 									}

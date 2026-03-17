@@ -3,7 +3,17 @@
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "ls_adls_storage_account_connection",
-			"type": "LinkedServiceReference"
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"key_vault_url": {
+					"value": "@dataset().key_vault_url",
+					"type": "Expression"
+				},
+				"adls_source_url": {
+					"value": "@dataset().adls_source_url",
+					"type": "Expression"
+				}
+			}
 		},
 		"parameters": {
 			"container_name": {
@@ -13,6 +23,12 @@
 				"type": "string"
 			},
 			"folder_name": {
+				"type": "string"
+			},
+			"key_vault_url": {
+				"type": "string"
+			},
+			"adls_source_url": {
 				"type": "string"
 			}
 		},
