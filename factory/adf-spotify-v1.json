@@ -1,0 +1,12 @@
+{
+	"name": "adf-spotify-v1",
+	"properties": {
+		"globalParameters": {
+			"adls_source_url": {
+				"type": "string",
+				"value": "https://adlsspotifyv1.dfs.core.windows.net/"
+			}
+		}
+	},
+	"location": "eastus"
+}
