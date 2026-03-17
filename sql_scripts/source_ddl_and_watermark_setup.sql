@@ -4,29 +4,29 @@ Datatype: array
 Value:
 [
   {
-    "tableName": "MARA",
+    "tableName": "DimUser",
     "tableSchemaName": "dbo",
-    "Watermark_Column": "last_updated"
+    "Watermark_Column": "updated_at"
   },
   {
-    "tableName": "VBRK",
+    "tableName": "DimArtist",
     "tableSchemaName": "dbo",
-    "Watermark_Column": "last_updated"
+    "Watermark_Column": "updated_at"
   },
   {
-    "tableName": "VBAP",
+    "tableName": "DimTrack",
     "tableSchemaName": "dbo",
-    "Watermark_Column": "last_updated"
+    "Watermark_Column": "updated_at"
   },
   {
-    "tableName": "VBRK_SPPAYM",
+    "tableName": "DimDate",
     "tableSchemaName": "dbo",
-    "Watermark_Column": "last_updated"
+    "Watermark_Column": "updated_at"
   },
   {
-    "tableName": "SR01A",
+    "tableName": "FactStream",
     "tableSchemaName": "dbo",
-    "Watermark_Column": "last_updated"
+    "Watermark_Column": "updated_at"
   }
 ]
 */
