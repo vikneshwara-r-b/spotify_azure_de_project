@@ -1,0 +1,80 @@
+{
+	"name": "pl_spotify_data_ingestion",
+	"properties": {
+		"activities": [
+			{
+				"name": "Loop Each Table",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"activities": [
+						{
+							"name": "Get Last Watermark",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_source_mssql_query",
+									"type": "DatasetReference",
+									"parameters": {
+										"db_server_name": {
+											"value": "@pipeline().globalParameters.sql_source_server_name",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"table_list": {
+				"type": "array",
+				"defaultValue": [
+					{
+						"tableName": "DimUser",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "updated_at"
+					},
+					{
+						"tableName": "DimArtist",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "updated_at"
+					},
+					{
+						"tableName": "DimTrack",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "updated_at"
+					},
+					{
+						"tableName": "DimDate",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "updated_at"
+					},
+					{
+						"tableName": "FactStream",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "updated_at"
+					}
+				]
+			}
+		},
+		"annotations": []
+	}
+}
