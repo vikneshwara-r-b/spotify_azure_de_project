@@ -222,6 +222,78 @@
 									}
 								}
 							}
+						},
+						{
+							"name": "Update Watermark Value",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Copy MSSQL to Parquet Sink",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[usp_write_watermark]",
+								"storedProcedureParameters": {
+									"last_updated": {
+										"value": {
+											"value": "@activity('Get New Watermark Value').output.firstRow.NewWatermarkValue",
+											"type": "Expression"
+										},
+										"type": "DateTime"
+									},
+									"SchemaName": {
+										"value": {
+											"value": "@item().tableSchemaName",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"tableName": {
+										"value": {
+											"value": "@item().tableName",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ls_mssql_server_connection",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"db_server_name": {
+										"value": "@pipeline().globalParameters.sql_source_server_name",
+										"type": "Expression"
+									},
+									"db_user_name": {
+										"value": "@pipeline().globalParameters.sql_source_server_username",
+										"type": "Expression"
+									},
+									"db_name": {
+										"value": "@pipeline().globalParameters.sql_source_database_name",
+										"type": "Expression"
+									},
+									"key_vault_url": {
+										"value": "@pipeline().globalParameters.key_vault_url",
+										"type": "Expression"
+									},
+									"db_password_secret_key": {
+										"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
+										"type": "Expression"
+									}
+								}
+							}
 						}
 					]
 				}
@@ -249,12 +321,12 @@
 					{
 						"tableName": "DimDate",
 						"tableSchemaName": "dbo",
-						"Watermark_Column": "updated_at"
+						"Watermark_Column": "date"
 					},
 					{
 						"tableName": "FactStream",
 						"tableSchemaName": "dbo",
-						"Watermark_Column": "updated_at"
+						"Watermark_Column": "stream_timestamp"
 					}
 				]
 			}
