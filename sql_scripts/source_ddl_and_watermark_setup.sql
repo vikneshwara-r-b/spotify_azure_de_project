@@ -21,12 +21,12 @@ Value:
   {
     "tableName": "DimDate",
     "tableSchemaName": "dbo",
-    "Watermark_Column": "updated_at"
+    "Watermark_Column": "date"
   },
   {
     "tableName": "FactStream",
     "tableSchemaName": "dbo",
-    "Watermark_Column": "updated_at"
+    "Watermark_Column": "stream_timestamp"
   }
 ]
 */
