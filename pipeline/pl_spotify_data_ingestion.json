@@ -184,7 +184,7 @@
 												"referenceName": "ds_adls_sink_parquet",
 												"type": "DatasetReference",
 												"parameters": {
-													"container_name": "raw",
+													"container_name": "bronze",
 													"file_name": {
 														"value": "@concat(item().tableName,'_',formatDateTime(activity('Get New Watermark Value').output.firstRow.NewWatermarkValue,'YYYY-MM-ddTHH:mm:ss'),'.parquet')",
 														"type": "Expression"
