@@ -15,115 +15,6 @@
 					"isSequential": true,
 					"activities": [
 						{
-							"name": "Copy MSSQL to Parquet Sink",
-							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "Get Old Watermark Value",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								},
-								{
-									"activity": "Get New Watermark Value",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"source": {
-									"type": "AzureSqlSource",
-									"sqlReaderQuery": {
-										"value": "SELECT TOP 5 * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value').output.Entity.LastWatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
-										"type": "Expression"
-									},
-									"queryTimeout": "02:00:00",
-									"partitionOption": "None"
-								},
-								"sink": {
-									"type": "ParquetSink",
-									"storeSettings": {
-										"type": "AzureBlobFSWriteSettings",
-										"copyBehavior": "PreserveHierarchy"
-									},
-									"formatSettings": {
-										"type": "ParquetWriteSettings"
-									}
-								},
-								"enableStaging": false,
-								"translator": {
-									"type": "TabularTranslator",
-									"typeConversion": true,
-									"typeConversionSettings": {
-										"allowDataTruncation": true,
-										"treatBooleanAsNumber": false
-									}
-								}
-							},
-							"inputs": [
-								{
-									"referenceName": "ds_source_mssql_query",
-									"type": "DatasetReference",
-									"parameters": {
-										"db_server_name": {
-											"value": "@pipeline().globalParameters.sql_source_server_name",
-											"type": "Expression"
-										},
-										"db_user_name": {
-											"value": "@pipeline().globalParameters.sql_source_server_username",
-											"type": "Expression"
-										},
-										"db_name": {
-											"value": "@pipeline().globalParameters.sql_source_database_name",
-											"type": "Expression"
-										},
-										"key_vault_url": {
-											"value": "@pipeline().globalParameters.key_vault_url",
-											"type": "Expression"
-										},
-										"db_password_secret_key": {
-											"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
-											"type": "Expression"
-										}
-									}
-								}
-							],
-							"outputs": [
-								{
-									"referenceName": "ds_adls_sink_parquet",
-									"type": "DatasetReference",
-									"parameters": {
-										"container_name": "raw",
-										"file_name": {
-											"value": "@concat(item().tableName,'_',formatDateTime(activity('Get New Watermark Value').output.firstRow.NewWatermarkValue,'YYYYMMddHHmmss'),'.parquet')",
-											"type": "Expression"
-										},
-										"folder_name": {
-											"value": "@item().tableName",
-											"type": "Expression"
-										},
-										"key_vault_url": {
-											"value": "@pipeline().globalParameters.key_vault_url",
-											"type": "Expression"
-										},
-										"adls_source_url": {
-											"value": "@pipeline().globalParameters.adls_source_url",
-											"type": "Expression"
-										}
-									}
-								}
-							]
-						},
-						{
 							"name": "Get New Watermark Value",
 							"type": "Lookup",
 							"dependsOn": [],
@@ -201,11 +92,165 @@
 							}
 						},
 						{
-							"name": "Update New Watermark Value",
-							"type": "WebActivity",
+							"name": "Check for incremental load",
+							"type": "IfCondition",
 							"dependsOn": [
 								{
-									"activity": "Copy MSSQL to Parquet Sink",
+									"activity": "Check incremental row count",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@greater(activity('Check incremental row count').output.firstRow.rows_read, 0)",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "Copy MSSQL to Parquet Sink",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderQuery": {
+													"value": "SELECT TOP 5 * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value').output.Entity.LastWatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"sink": {
+												"type": "ParquetSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings",
+													"copyBehavior": "PreserveHierarchy"
+												},
+												"formatSettings": {
+													"type": "ParquetWriteSettings"
+												}
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "ds_source_mssql_query",
+												"type": "DatasetReference",
+												"parameters": {
+													"db_server_name": {
+														"value": "@pipeline().globalParameters.sql_source_server_name",
+														"type": "Expression"
+													},
+													"db_user_name": {
+														"value": "@pipeline().globalParameters.sql_source_server_username",
+														"type": "Expression"
+													},
+													"db_name": {
+														"value": "@pipeline().globalParameters.sql_source_database_name",
+														"type": "Expression"
+													},
+													"key_vault_url": {
+														"value": "@pipeline().globalParameters.key_vault_url",
+														"type": "Expression"
+													},
+													"db_password_secret_key": {
+														"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "ds_adls_sink_parquet",
+												"type": "DatasetReference",
+												"parameters": {
+													"container_name": "raw",
+													"file_name": {
+														"value": "@concat(item().tableName,'_',formatDateTime(activity('Get New Watermark Value').output.firstRow.NewWatermarkValue,'YYYYMMddHHmmss'),'.parquet')",
+														"type": "Expression"
+													},
+													"folder_name": {
+														"value": "@item().tableName",
+														"type": "Expression"
+													},
+													"key_vault_url": {
+														"value": "@pipeline().globalParameters.key_vault_url",
+														"type": "Expression"
+													},
+													"adls_source_url": {
+														"value": "@pipeline().globalParameters.adls_source_url",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "Update New Watermark Value",
+										"type": "WebActivity",
+										"dependsOn": [
+											{
+												"activity": "Copy MSSQL to Parquet Sink",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"method": "POST",
+											"url": {
+												"value": "@pipeline().globalParameters.azure_table_interaction_endpoint",
+												"type": "Expression"
+											},
+											"body": {
+												"value": "{\n  \"PartitionKey\": \"@{item().tableSchemaName}\",\n  \"RowKey\": \"@{item().tableName}\",\n  \"LastWaterMarkValue\": \"@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}\"\n}",
+												"type": "Expression"
+											}
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "Check incremental row count",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Get Old Watermark Value",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "Get New Watermark Value",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -220,14 +265,40 @@
 							},
 							"userProperties": [],
 							"typeProperties": {
-								"method": "POST",
-								"url": {
-									"value": "@pipeline().globalParameters.azure_table_interaction_endpoint",
-									"type": "Expression"
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT COALESCE(COUNT(*),0) as rows_read FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value').output.Entity.LastWatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
 								},
-								"body": {
-									"value": "{\n  \"PartitionKey\": \"@{item().tableSchemaName}\",\n  \"RowKey\": \"@{item().tableName}\",\n  \"LastWaterMarkValue\": \"@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}\"\n}",
-									"type": "Expression"
+								"dataset": {
+									"referenceName": "ds_source_mssql_query",
+									"type": "DatasetReference",
+									"parameters": {
+										"db_server_name": {
+											"value": "@pipeline().globalParameters.sql_source_server_name",
+											"type": "Expression"
+										},
+										"db_user_name": {
+											"value": "@pipeline().globalParameters.sql_source_server_username",
+											"type": "Expression"
+										},
+										"db_name": {
+											"value": "@pipeline().globalParameters.sql_source_database_name",
+											"type": "Expression"
+										},
+										"key_vault_url": {
+											"value": "@pipeline().globalParameters.key_vault_url",
+											"type": "Expression"
+										},
+										"db_password_secret_key": {
+											"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
+											"type": "Expression"
+										}
+									}
 								}
 							}
 						}
