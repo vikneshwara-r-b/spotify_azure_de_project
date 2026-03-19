@@ -25,6 +25,10 @@
 			"sql_source_server_username": {
 				"type": "string",
 				"value": "sqladmin"
+			},
+			"azure_table_interaction_endpoint": {
+				"type": "string",
+				"value": "https://prod-82.eastus.logic.azure.com:443/workflows/a0da9ef849f042499f0ba9b02d0ef901/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=m_yo9_bLNOxIRYJANf_HLJNzJu5YRCZse-SYAC1VxeI"
 			}
 		}
 	},
