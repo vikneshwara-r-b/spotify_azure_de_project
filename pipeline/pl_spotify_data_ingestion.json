@@ -186,7 +186,7 @@
 												"parameters": {
 													"container_name": "bronze",
 													"file_name": {
-														"value": "@concat(item().tableName,'_',formatDateTime(activity('Get New Watermark Value').output.firstRow.NewWatermarkValue,'YYYY-MM-ddTHH:mm:ss'),'.parquet')",
+														"value": "@concat(item().tableName,'_',formatDateTime(activity('Get New Watermark Value').output.firstRow.NewWatermarkValue,'yyyyMMddHHmmss'),'.parquet')",
 														"type": "Expression"
 													},
 													"folder_name": {
