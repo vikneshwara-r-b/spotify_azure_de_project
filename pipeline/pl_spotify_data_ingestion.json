@@ -17,7 +17,14 @@
 						{
 							"name": "Get New Watermark Value",
 							"type": "Lookup",
-							"dependsOn": [],
+							"dependsOn": [
+								{
+									"activity": "Set MSSQL username",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -45,7 +52,7 @@
 											"type": "Expression"
 										},
 										"db_user_name": {
-											"value": "@pipeline().globalParameters.sql_source_server_username",
+											"value": "@variables('mssql_server_username')",
 											"type": "Expression"
 										},
 										"db_name": {
@@ -69,7 +76,7 @@
 							"type": "WebActivity",
 							"dependsOn": [
 								{
-									"activity": "Fetch Logic App URL",
+									"activity": "Set logic app url",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -89,7 +96,7 @@
 									"Content-Type": "application/json"
 								},
 								"url": {
-									"value": "@activity('Fetch Logic App URL').output.value",
+									"value": "@variables('logic_app_url')",
 									"type": "Expression"
 								},
 								"body": {
@@ -132,7 +139,7 @@
 											"source": {
 												"type": "AzureSqlSource",
 												"sqlReaderQuery": {
-													"value": "SELECT TOP 5 * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value').output.Entity.LastWatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
+													"value": "SELECT TOP 100 * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value').output.Entity.LastWatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
 													"type": "Expression"
 												},
 												"queryTimeout": "02:00:00",
@@ -168,7 +175,7 @@
 														"type": "Expression"
 													},
 													"db_user_name": {
-														"value": "@pipeline().globalParameters.sql_source_server_username",
+														"value": "@variables('mssql_server_username')",
 														"type": "Expression"
 													},
 													"db_name": {
@@ -234,7 +241,7 @@
 										"typeProperties": {
 											"method": "POST",
 											"url": {
-												"value": "@pipeline().globalParameters.azure_table_interaction_endpoint",
+												"value": "@variables('logic_app_url')",
 												"type": "Expression"
 											},
 											"body": {
@@ -290,7 +297,7 @@
 											"type": "Expression"
 										},
 										"db_user_name": {
-											"value": "@pipeline().globalParameters.sql_source_server_username",
+											"value": "@variables('mssql_server_username')",
 											"type": "Expression"
 										},
 										"db_name": {
@@ -332,6 +339,78 @@
 									"resource": "https://vault.azure.net/"
 								}
 							}
+						},
+						{
+							"name": "Fetch MSSQL server username",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "GET",
+								"url": {
+									"value": "@{pipeline().globalParameters.key_vault_url}secrets/sql-admin-username?api-version=7.0",
+									"type": "Expression"
+								},
+								"authentication": {
+									"type": "MSI",
+									"resource": "https://vault.azure.net/"
+								}
+							}
+						},
+						{
+							"name": "Set logic app url",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Fetch Logic App URL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "logic_app_url",
+								"value": {
+									"value": "@activity('Fetch Logic App URL').output.value",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set MSSQL username",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Fetch MSSQL server username",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "mssql_server_username",
+								"value": {
+									"value": "@activity('Fetch MSSQL server username').output.value",
+									"type": "Expression"
+								}
+							}
 						}
 					]
 				}
@@ -367,6 +446,14 @@
 						"Watermark_Column": "stream_timestamp"
 					}
 				]
+			}
+		},
+		"variables": {
+			"logic_app_url": {
+				"type": "String"
+			},
+			"mssql_server_username": {
+				"type": "String"
 			}
 		},
 		"annotations": []
