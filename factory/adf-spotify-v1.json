@@ -21,10 +21,6 @@
 			"sql_source_server_pwd_secret_key": {
 				"type": "string",
 				"value": "sql-admin-password"
-			},
-			"sql_source_server_username": {
-				"type": "string",
-				"value": "sqladmin"
 			}
 		}
 	},
