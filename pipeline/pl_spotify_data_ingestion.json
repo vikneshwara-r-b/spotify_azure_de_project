@@ -139,7 +139,7 @@
 											"source": {
 												"type": "AzureSqlSource",
 												"sqlReaderQuery": {
-													"value": "SELECT TOP 100 * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value').output.Entity.LastWatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
+													"value": "SELECT * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value').output.Entity.LastWatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
 													"type": "Expression"
 												},
 												"queryTimeout": "02:00:00",
