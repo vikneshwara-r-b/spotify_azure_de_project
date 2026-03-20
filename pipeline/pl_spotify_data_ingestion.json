@@ -67,7 +67,14 @@
 						{
 							"name": "Get Old Watermark Value",
 							"type": "WebActivity",
-							"dependsOn": [],
+							"dependsOn": [
+								{
+									"activity": "Fetch Logic App URL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -82,7 +89,7 @@
 									"Content-Type": "application/json"
 								},
 								"url": {
-									"value": "@pipeline().globalParameters.azure_table_interaction_endpoint",
+									"value": "@activity('Fetch Logic App URL').output.value",
 									"type": "Expression"
 								},
 								"body": {
@@ -299,6 +306,30 @@
 											"type": "Expression"
 										}
 									}
+								}
+							}
+						},
+						{
+							"name": "Fetch Logic App URL",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "GET",
+								"url": {
+									"value": "@{pipeline().globalParameters.key_vault_url}secrets/azure-table-interaction-endpoint?api-version=7.0",
+									"type": "Expression"
+								},
+								"authentication": {
+									"type": "MSI",
+									"resource": "https://vault.azure.net/"
 								}
 							}
 						}
