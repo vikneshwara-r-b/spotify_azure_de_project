@@ -39,7 +39,7 @@
 									"type": "Expression"
 								},
 								"body": {
-									"value": "{\n  \"PartitionKey\": \"@{item().tableSchemaName}\",\n  \"RowKey\": \"@{item().tableName}\",\n  \"LastWaterMarkValue\": \"@{item().LastWaterMarkValue}\"\n}",
+									"value": "{\n  \"PartitionKey\": \"@{item().tableSchemaName}\",\n  \"RowKey\": \"@{item().tableName}\",\n  \"LastWaterMarkValue\": \"@{item().LastWaterMarkValue}\",\n  \"OperationType\": \"insert\"\n}",
 									"type": "Expression"
 								}
 							}
