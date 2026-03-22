@@ -5,7 +5,14 @@
 			{
 				"name": "Loop Each Table",
 				"type": "ForEach",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Set secrets map",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
@@ -17,14 +24,7 @@
 						{
 							"name": "Get New Watermark Value",
 							"type": "Lookup",
-							"dependsOn": [
-								{
-									"activity": "Set MSSQL username",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
+							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -48,15 +48,15 @@
 									"type": "DatasetReference",
 									"parameters": {
 										"db_server_name": {
-											"value": "@pipeline().globalParameters.sql_source_server_name",
+											"value": "@string(json(variables('secrets_map'))['sql-source-server-name'])",
 											"type": "Expression"
 										},
 										"db_user_name": {
-											"value": "@variables('mssql_server_username')",
+											"value": "@string(json(variables('secrets_map'))['sql-admin-username'])",
 											"type": "Expression"
 										},
 										"db_name": {
-											"value": "@pipeline().globalParameters.sql_source_database_name",
+											"value": "spotifydb",
 											"type": "Expression"
 										},
 										"key_vault_url": {
@@ -64,7 +64,7 @@
 											"type": "Expression"
 										},
 										"db_password_secret_key": {
-											"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
+											"value": "sql-admin-password",
 											"type": "Expression"
 										}
 									}
@@ -74,14 +74,7 @@
 						{
 							"name": "Get Old Watermark Value",
 							"type": "WebActivity",
-							"dependsOn": [
-								{
-									"activity": "Set logic app url",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
+							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -96,7 +89,7 @@
 									"Content-Type": "application/json"
 								},
 								"url": {
-									"value": "@variables('logic_app_url')",
+									"value": "@string(json(variables('secrets_map'))['azure-table-interaction-endpoint'])",
 									"type": "Expression"
 								},
 								"body": {
@@ -171,15 +164,15 @@
 												"type": "DatasetReference",
 												"parameters": {
 													"db_server_name": {
-														"value": "@pipeline().globalParameters.sql_source_server_name",
+														"value": "@string(json(variables('secrets_map'))['sql-source-server-name'])",
 														"type": "Expression"
 													},
 													"db_user_name": {
-														"value": "@variables('mssql_server_username')",
+														"value": "@string(json(variables('secrets_map'))['sql-admin-username'])",
 														"type": "Expression"
 													},
 													"db_name": {
-														"value": "@pipeline().globalParameters.sql_source_database_name",
+														"value": "spotifydb",
 														"type": "Expression"
 													},
 													"key_vault_url": {
@@ -187,7 +180,7 @@
 														"type": "Expression"
 													},
 													"db_password_secret_key": {
-														"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
+														"value": "sql-admin-password",
 														"type": "Expression"
 													}
 												}
@@ -212,7 +205,7 @@
 														"type": "Expression"
 													},
 													"adls_source_url": {
-														"value": "@pipeline().globalParameters.adls_source_url",
+														"value": "@string(json(variables('secrets_map'))['adls-source-url'])",
 														"type": "Expression"
 													}
 												}
@@ -241,11 +234,11 @@
 										"typeProperties": {
 											"method": "POST",
 											"url": {
-												"value": "@variables('logic_app_url')",
+												"value": "@string(json(variables('secrets_map'))['azure-table-interaction-endpoint'])\n",
 												"type": "Expression"
 											},
 											"body": {
-												"value": "{\n  \"PartitionKey\": \"@{item().tableSchemaName}\",\n  \"RowKey\": \"@{item().tableName}\",\n  \"LastWaterMarkValue\": \"@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}\"\n}",
+												"value": "{\n  \"PartitionKey\": \"@{item().tableSchemaName}\",\n  \"RowKey\": \"@{item().tableName}\",\n  \"LastWaterMarkValue\": \"@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}\",\n  \"OperationType\": \"update\"\n}",
 												"type": "Expression"
 											}
 										}
@@ -293,15 +286,15 @@
 									"type": "DatasetReference",
 									"parameters": {
 										"db_server_name": {
-											"value": "@pipeline().globalParameters.sql_source_server_name",
+											"value": "@string(json(variables('secrets_map'))['sql-source-server-name'])",
 											"type": "Expression"
 										},
 										"db_user_name": {
-											"value": "@variables('mssql_server_username')",
+											"value": "@string(json(variables('secrets_map'))['sql-admin-username'])",
 											"type": "Expression"
 										},
 										"db_name": {
-											"value": "@pipeline().globalParameters.sql_source_database_name",
+											"value": "spotifydb",
 											"type": "Expression"
 										},
 										"key_vault_url": {
@@ -309,15 +302,29 @@
 											"type": "Expression"
 										},
 										"db_password_secret_key": {
-											"value": "@pipeline().globalParameters.sql_source_server_pwd_secret_key",
+											"value": "sql-admin-password",
 											"type": "Expression"
 										}
 									}
 								}
 							}
-						},
+						}
+					]
+				}
+			},
+			{
+				"name": "Loop each secret key",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.input_secret_keys",
+						"type": "Expression"
+					},
+					"activities": [
 						{
-							"name": "Fetch Logic App URL",
+							"name": "Fetch Secret KV Pair",
 							"type": "WebActivity",
 							"dependsOn": [],
 							"policy": {
@@ -325,13 +332,13 @@
 								"retry": 0,
 								"retryIntervalInSeconds": 30,
 								"secureOutput": false,
-								"secureInput": false
+								"secureInput": true
 							},
 							"userProperties": [],
 							"typeProperties": {
 								"method": "GET",
 								"url": {
-									"value": "@{pipeline().globalParameters.key_vault_url}secrets/azure-table-interaction-endpoint?api-version=7.0",
+									"value": "@{pipeline().globalParameters.key_vault_url}secrets/@{item()}?api-version=7.0",
 									"type": "Expression"
 								},
 								"authentication": {
@@ -341,78 +348,50 @@
 							}
 						},
 						{
-							"name": "Fetch MSSQL server username",
-							"type": "WebActivity",
-							"dependsOn": [],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"method": "GET",
-								"url": {
-									"value": "@{pipeline().globalParameters.key_vault_url}secrets/sql-admin-username?api-version=7.0",
-									"type": "Expression"
-								},
-								"authentication": {
-									"type": "MSI",
-									"resource": "https://vault.azure.net/"
-								}
-							}
-						},
-						{
-							"name": "Set logic app url",
-							"type": "SetVariable",
+							"name": "Append secret key and value",
+							"type": "AppendVariable",
 							"dependsOn": [
 								{
-									"activity": "Fetch Logic App URL",
+									"activity": "Fetch Secret KV Pair",
 									"dependencyConditions": [
 										"Succeeded"
 									]
 								}
 							],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
 							"userProperties": [],
 							"typeProperties": {
-								"variableName": "logic_app_url",
+								"variableName": "secret_kv_pair_list",
 								"value": {
-									"value": "@activity('Fetch Logic App URL').output.value",
-									"type": "Expression"
-								}
-							}
-						},
-						{
-							"name": "Set MSSQL username",
-							"type": "SetVariable",
-							"dependsOn": [
-								{
-									"activity": "Fetch MSSQL server username",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "mssql_server_username",
-								"value": {
-									"value": "@activity('Fetch MSSQL server username').output.value",
+									"value": "@concat('\"', item(), '\": \"', activity('Fetch Secret KV Pair').output.value, '\"')",
 									"type": "Expression"
 								}
 							}
 						}
 					]
+				}
+			},
+			{
+				"name": "Set secrets map",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Loop each secret key",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": true,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "secrets_map",
+					"value": {
+						"value": "@concat('{', join(variables('secret_kv_pair_list'), ','), '}')",
+						"type": "Expression"
+					}
 				}
 			}
 		],
@@ -446,14 +425,25 @@
 						"Watermark_Column": "stream_timestamp"
 					}
 				]
+			},
+			"input_secret_keys": {
+				"type": "array",
+				"defaultValue": [
+					"adls-source-url",
+					"adls-storage-account-name",
+					"azure-table-interaction-endpoint",
+					"sql-admin-username",
+					"sql-source-server-name"
+				]
 			}
 		},
 		"variables": {
-			"logic_app_url": {
-				"type": "String"
+			"secrets_map": {
+				"type": "String",
+				"defaultValue": "{}"
 			},
-			"mssql_server_username": {
-				"type": "String"
+			"secret_kv_pair_list": {
+				"type": "Array"
 			}
 		},
 		"annotations": []
