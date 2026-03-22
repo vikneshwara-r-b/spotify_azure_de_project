@@ -1,0 +1,60 @@
+{
+	"name": "ds_adls_sink_parquet",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adls_storage_account_connection",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"key_vault_url": {
+					"value": "@dataset().key_vault_url",
+					"type": "Expression"
+				},
+				"adls_source_url": {
+					"value": "@dataset().adls_source_url",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"container_name": {
+				"type": "string"
+			},
+			"file_name": {
+				"type": "string"
+			},
+			"folder_name": {
+				"type": "string"
+			},
+			"key_vault_url": {
+				"type": "string"
+			},
+			"adls_source_url": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "file_datasets"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().file_name",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().folder_name",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().container_name",
+					"type": "Expression"
+				}
+			},
+			"compressionCodec": "none"
+		},
+		"schema": []
+	}
+}

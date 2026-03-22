@@ -1,0 +1,32 @@
+{
+	"name": "ls_adls_storage_account_connection",
+	"properties": {
+		"parameters": {
+			"key_vault_url": {
+				"type": "string"
+			},
+			"adls_source_url": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "@{linkedService().adls_source_url}",
+			"accountKey": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "ls_kv_connection",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"key_vault_url": {
+							"value": "@linkedService().key_vault_url",
+							"type": "Expression"
+						}
+					}
+				},
+				"secretName": "adls-storage-account-key"
+			}
+		}
+	}
+}

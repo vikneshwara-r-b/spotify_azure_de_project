@@ -1,0 +1,451 @@
+{
+	"name": "pl_spotify_data_ingestion",
+	"properties": {
+		"activities": [
+			{
+				"name": "Loop Each Table",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Set secrets map",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.table_list",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Get New Watermark Value",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": true
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT COALESCE(MAX(@{item().Watermark_Column}),'1900-01-01T00:00:00') AS NewWatermarkValue FROM @{item().tableSchemaName}.@{item().tableName}",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_source_mssql_query",
+									"type": "DatasetReference",
+									"parameters": {
+										"db_server_name": {
+											"value": "@string(json(variables('secrets_map'))['sql-source-server-name'])",
+											"type": "Expression"
+										},
+										"db_user_name": {
+											"value": "@string(json(variables('secrets_map'))['sql-admin-username'])",
+											"type": "Expression"
+										},
+										"db_name": {
+											"value": "spotifydb",
+											"type": "Expression"
+										},
+										"key_vault_url": {
+											"value": "@pipeline().globalParameters.key_vault_url",
+											"type": "Expression"
+										},
+										"db_password_secret_key": {
+											"value": "sql-admin-password",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						},
+						{
+							"name": "Get Old Watermark Value",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": true
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "POST",
+								"headers": {
+									"Content-Type": "application/json"
+								},
+								"url": {
+									"value": "@string(json(variables('secrets_map'))['azure-table-interaction-endpoint'])",
+									"type": "Expression"
+								},
+								"body": {
+									"value": "{\n  \"PartitionKey\": \"@{item().tableSchemaName}\",\n  \"RowKey\": \"@{item().tableName}\",\n  \"OperationType\": \"fetch\"\n}",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Check for incremental load",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "Check incremental row count",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@greater(activity('Check incremental row count').output.firstRow.rows_read, 0)",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "Copy MSSQL to Parquet Sink",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": true
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderQuery": {
+													"value": "SELECT * FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value').output.Entity.LastWatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"sink": {
+												"type": "ParquetSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings",
+													"copyBehavior": "PreserveHierarchy"
+												},
+												"formatSettings": {
+													"type": "ParquetWriteSettings"
+												}
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "ds_source_mssql_query",
+												"type": "DatasetReference",
+												"parameters": {
+													"db_server_name": {
+														"value": "@string(json(variables('secrets_map'))['sql-source-server-name'])",
+														"type": "Expression"
+													},
+													"db_user_name": {
+														"value": "@string(json(variables('secrets_map'))['sql-admin-username'])",
+														"type": "Expression"
+													},
+													"db_name": {
+														"value": "spotifydb",
+														"type": "Expression"
+													},
+													"key_vault_url": {
+														"value": "@pipeline().globalParameters.key_vault_url",
+														"type": "Expression"
+													},
+													"db_password_secret_key": {
+														"value": "sql-admin-password",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "ds_adls_sink_parquet",
+												"type": "DatasetReference",
+												"parameters": {
+													"container_name": "bronze",
+													"file_name": {
+														"value": "@concat(item().tableName,'_',formatDateTime(activity('Get New Watermark Value').output.firstRow.NewWatermarkValue,'yyyyMMddHHmmss'),'.parquet')",
+														"type": "Expression"
+													},
+													"folder_name": {
+														"value": "@item().tableName",
+														"type": "Expression"
+													},
+													"key_vault_url": {
+														"value": "@pipeline().globalParameters.key_vault_url",
+														"type": "Expression"
+													},
+													"adls_source_url": {
+														"value": "@string(json(variables('secrets_map'))['adls-source-url'])",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "Update New Watermark Value",
+										"type": "WebActivity",
+										"dependsOn": [
+											{
+												"activity": "Copy MSSQL to Parquet Sink",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"method": "POST",
+											"url": {
+												"value": "@string(json(variables('secrets_map'))['azure-table-interaction-endpoint'])\n",
+												"type": "Expression"
+											},
+											"body": {
+												"value": "{\n  \"PartitionKey\": \"@{item().tableSchemaName}\",\n  \"RowKey\": \"@{item().tableName}\",\n  \"LastWaterMarkValue\": \"@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}\",\n  \"OperationType\": \"update\"\n}",
+												"type": "Expression"
+											}
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "Check incremental row count",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Get Old Watermark Value",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "Get New Watermark Value",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": true
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT COALESCE(COUNT(*),0) as rows_read FROM @{item().tableSchemaName}.@{item().tableName} WHERE @{item().Watermark_Column} > '@{activity('Get Old Watermark Value').output.Entity.LastWatermarkValue}' AND @{item().Watermark_Column} <= '@{activity('Get New Watermark Value').output.firstRow.NewWatermarkValue}'",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_source_mssql_query",
+									"type": "DatasetReference",
+									"parameters": {
+										"db_server_name": {
+											"value": "@string(json(variables('secrets_map'))['sql-source-server-name'])",
+											"type": "Expression"
+										},
+										"db_user_name": {
+											"value": "@string(json(variables('secrets_map'))['sql-admin-username'])",
+											"type": "Expression"
+										},
+										"db_name": {
+											"value": "spotifydb",
+											"type": "Expression"
+										},
+										"key_vault_url": {
+											"value": "@pipeline().globalParameters.key_vault_url",
+											"type": "Expression"
+										},
+										"db_password_secret_key": {
+											"value": "sql-admin-password",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Loop each secret key",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.input_secret_keys",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Fetch Secret KV Pair",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": true,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "GET",
+								"url": {
+									"value": "@{pipeline().globalParameters.key_vault_url}secrets/@{item()}?api-version=7.0",
+									"type": "Expression"
+								},
+								"authentication": {
+									"type": "MSI",
+									"resource": "https://vault.azure.net/"
+								}
+							}
+						},
+						{
+							"name": "Append secret key and value",
+							"type": "AppendVariable",
+							"dependsOn": [
+								{
+									"activity": "Fetch Secret KV Pair",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "secret_kv_pair_list",
+								"value": {
+									"value": "@concat('\"', item(), '\": \"', activity('Fetch Secret KV Pair').output.value, '\"')",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Set secrets map",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Loop each secret key",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": true,
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "secrets_map",
+					"value": {
+						"value": "@concat('{', join(variables('secret_kv_pair_list'), ','), '}')",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"table_list": {
+				"type": "array",
+				"defaultValue": [
+					{
+						"tableName": "DimUser",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "updated_at"
+					},
+					{
+						"tableName": "DimArtist",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "updated_at"
+					},
+					{
+						"tableName": "DimTrack",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "updated_at"
+					},
+					{
+						"tableName": "DimDate",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "date"
+					},
+					{
+						"tableName": "FactStream",
+						"tableSchemaName": "dbo",
+						"Watermark_Column": "stream_timestamp"
+					}
+				]
+			},
+			"input_secret_keys": {
+				"type": "array",
+				"defaultValue": [
+					"adls-source-url",
+					"adls-storage-account-name",
+					"azure-table-interaction-endpoint",
+					"sql-admin-username",
+					"sql-source-server-name"
+				]
+			}
+		},
+		"variables": {
+			"secrets_map": {
+				"type": "String",
+				"defaultValue": "{}"
+			},
+			"secret_kv_pair_list": {
+				"type": "Array"
+			}
+		},
+		"annotations": []
+	}
+}

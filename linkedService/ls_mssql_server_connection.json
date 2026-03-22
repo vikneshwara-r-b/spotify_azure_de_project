@@ -1,0 +1,50 @@
+{
+	"name": "ls_mssql_server_connection",
+	"properties": {
+		"description": "Used to connect with Azure MSSQL database servers",
+		"parameters": {
+			"db_server_name": {
+				"type": "string"
+			},
+			"db_user_name": {
+				"type": "string"
+			},
+			"db_name": {
+				"type": "string"
+			},
+			"key_vault_url": {
+				"type": "string"
+			},
+			"db_password_secret_key": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"server": "@{linkedService().db_server_name}",
+			"database": "@{linkedService().db_name}",
+			"encrypt": "mandatory",
+			"trustServerCertificate": false,
+			"authenticationType": "SQL",
+			"userName": "@{linkedService().db_user_name}",
+			"password": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "ls_kv_connection",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"key_vault_url": {
+							"value": "@linkedService().key_vault_url",
+							"type": "Expression"
+						}
+					}
+				},
+				"secretName": {
+					"value": "@linkedService().db_password_secret_key",
+					"type": "Expression"
+				}
+			}
+		}
+	}
+}
