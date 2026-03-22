@@ -2,25 +2,9 @@
 	"name": "adf-spotify-v1",
 	"properties": {
 		"globalParameters": {
-			"adls_source_url": {
-				"type": "string",
-				"value": "https://adlsspotifyv1.dfs.core.windows.net/"
-			},
 			"key_vault_url": {
 				"type": "string",
 				"value": "https://kv-spotify-v1.vault.azure.net/"
-			},
-			"sql_source_server_name": {
-				"type": "string",
-				"value": "sql-spotify-v1.database.windows.net"
-			},
-			"sql_source_database_name": {
-				"type": "string",
-				"value": "spotifydb"
-			},
-			"sql_source_server_pwd_secret_key": {
-				"type": "string",
-				"value": "sql-admin-password"
 			}
 		}
 	},
