@@ -84,7 +84,7 @@
 				],
 				"policy": {
 					"secureOutput": true,
-					"secureInput": false
+					"secureInput": true
 				},
 				"userProperties": [],
 				"typeProperties": {
