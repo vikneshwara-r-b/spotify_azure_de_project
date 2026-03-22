@@ -1,0 +1,16 @@
+{
+	"name": "ls_kv_connection",
+	"properties": {
+		"description": "Used to connect with Azure Key Vault for fetching credentails for different Azure resources",
+		"parameters": {
+			"key_vault_url": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "@{linkedService().key_vault_url}"
+		}
+	}
+}

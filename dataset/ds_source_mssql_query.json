@@ -1,0 +1,54 @@
+{
+	"name": "ds_source_mssql_query",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_mssql_server_connection",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"db_server_name": {
+					"value": "@dataset().db_server_name",
+					"type": "Expression"
+				},
+				"db_user_name": {
+					"value": "@dataset().db_user_name",
+					"type": "Expression"
+				},
+				"db_name": {
+					"value": "@dataset().db_name",
+					"type": "Expression"
+				},
+				"key_vault_url": {
+					"value": "@dataset().key_vault_url",
+					"type": "Expression"
+				},
+				"db_password_secret_key": {
+					"value": "@dataset().db_password_secret_key",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"db_server_name": {
+				"type": "string"
+			},
+			"db_user_name": {
+				"type": "string"
+			},
+			"db_name": {
+				"type": "string"
+			},
+			"key_vault_url": {
+				"type": "string"
+			},
+			"db_password_secret_key": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "sql_datasets"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": []
+	}
+}

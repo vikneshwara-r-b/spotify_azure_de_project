@@ -1,0 +1,138 @@
+{
+	"name": "pl_seed_ingestion_metadata",
+	"properties": {
+		"activities": [
+			{
+				"name": "Loop every Table",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Set logic app url",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.table_list",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Insert Watermark Value",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "POST",
+								"url": {
+									"value": "@variables('logic_app_url')",
+									"type": "Expression"
+								},
+								"body": {
+									"value": "{\n  \"PartitionKey\": \"@{item().tableSchemaName}\",\n  \"RowKey\": \"@{item().tableName}\",\n  \"LastWaterMarkValue\": \"@{item().LastWaterMarkValue}\",\n  \"OperationType\": \"insert\"\n}",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Fetch Logic App URL",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": true,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": {
+						"value": "@{pipeline().globalParameters.key_vault_url}secrets/azure-table-interaction-endpoint?api-version=7.0",
+						"type": "Expression"
+					},
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net/"
+					}
+				}
+			},
+			{
+				"name": "Set logic app url",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Fetch Logic App URL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": true,
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "logic_app_url",
+					"value": {
+						"value": "@activity('Fetch Logic App URL').output.value",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"table_list": {
+				"type": "array",
+				"defaultValue": [
+					{
+						"tableName": "DimUser",
+						"tableSchemaName": "dbo",
+						"LastWatermarkValue": "1900-01-01 00:00:00"
+					},
+					{
+						"tableName": "DimArtist",
+						"tableSchemaName": "dbo",
+						"LastWatermarkValue": "1900-01-01 00:00:00"
+					},
+					{
+						"tableName": "DimTrack",
+						"tableSchemaName": "dbo",
+						"LastWatermarkValue": "1900-01-01 00:00:00"
+					},
+					{
+						"tableName": "DimDate",
+						"tableSchemaName": "dbo",
+						"LastWatermarkValue": "1900-01-01 00:00:00"
+					},
+					{
+						"tableName": "FactStream",
+						"tableSchemaName": "dbo",
+						"LastWatermarkValue": "1900-01-01 00:00:00"
+					}
+				]
+			}
+		},
+		"variables": {
+			"logic_app_url": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}
