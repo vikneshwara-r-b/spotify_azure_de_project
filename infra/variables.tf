@@ -184,6 +184,32 @@ variable "key_vault_sku" {
 }
 
 # ============================================================================
+# Azure Table Storage
+# ============================================================================
+
+variable "azure_table_name" {
+  description = "Name of the Azure Table for metadata storage"
+  type        = string
+  default     = "samplemetadatastore"
+}
+
+# ============================================================================
+# Azure Logic App
+# ============================================================================
+
+variable "logic_app_name" {
+  description = "Name of the Azure Logic App (will be appended with suffix)"
+  type        = string
+  default     = "logicappspotifyde"
+}
+
+variable "logic_app_connection_name" {
+  description = "Name of the API connection for Azure Tables"
+  type        = string
+  default     = "azuretables"
+}
+
+# ============================================================================
 # Tags
 # ============================================================================
 
