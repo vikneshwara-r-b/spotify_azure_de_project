@@ -19,7 +19,7 @@
 						"value": "@pipeline().parameters.table_list",
 						"type": "Expression"
 					},
-					"isSequential": true,
+					"isSequential": false,
 					"activities": [
 						{
 							"name": "Get New Watermark Value",
@@ -322,6 +322,7 @@
 						"value": "@pipeline().parameters.input_secret_keys",
 						"type": "Expression"
 					},
+					"isSequential": true,
 					"activities": [
 						{
 							"name": "Fetch Secret KV Pair",
