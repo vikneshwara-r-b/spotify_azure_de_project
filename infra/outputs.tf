@@ -230,24 +230,69 @@ output "api_connection_name" {
 }
 
 # ============================================================================
+# Databricks Unity Catalog
+# ============================================================================
+
+output "storage_credential_name" {
+  description = "Name of the Unity Catalog storage credential"
+  value       = databricks_storage_credential.spotify_adls.name
+}
+
+output "storage_credential_id" {
+  description = "ID of the Unity Catalog storage credential"
+  value       = databricks_storage_credential.spotify_adls.id
+}
+
+output "external_locations" {
+  description = "All Unity Catalog external locations"
+  value = {
+    for key, location in databricks_external_location.layers : key => {
+      name = location.name
+      url  = location.url
+    }
+  }
+}
+
+output "unity_catalog_name" {
+  description = "Name of the Unity Catalog"
+  value       = databricks_catalog.spotify.name
+}
+
+output "unity_catalog_id" {
+  description = "ID of the Unity Catalog"
+  value       = databricks_catalog.spotify.id
+}
+
+output "unity_catalog_schemas" {
+  description = "Unity Catalog schemas"
+  value = {
+    for key, schema in databricks_schema.layers : key => schema.name
+  }
+}
+
+# ============================================================================
 # Summary Output
 # ============================================================================
 
 output "deployment_summary" {
   description = "Summary of all deployed resources"
   value = {
-    resource_group       = azurerm_resource_group.main.name
-    location             = azurerm_resource_group.main.location
-    data_factory         = azurerm_data_factory.main.name
-    storage_account      = azurerm_storage_account.adls.name
-    containers           = [for container in azurerm_storage_data_lake_gen2_filesystem.containers : container.name]
-    azure_table          = azurerm_storage_table.metadata.name
-    databricks_workspace = azurerm_databricks_workspace.main.name
-    access_connector     = azurerm_databricks_access_connector.main.name
-    sql_server           = azurerm_mssql_server.main.name
-    sql_database         = azurerm_mssql_database.main.name
-    key_vault            = azurerm_key_vault.main.name
-    logic_app            = azurerm_logic_app_workflow.metadata_handler.name
-    api_connection       = azurerm_api_connection.azuretables.name
+    resource_group        = azurerm_resource_group.main.name
+    location              = azurerm_resource_group.main.location
+    data_factory          = azurerm_data_factory.main.name
+    storage_account       = azurerm_storage_account.adls.name
+    containers            = [for container in azurerm_storage_data_lake_gen2_filesystem.containers : container.name]
+    azure_table           = azurerm_storage_table.metadata.name
+    databricks_workspace  = azurerm_databricks_workspace.main.name
+    access_connector      = azurerm_databricks_access_connector.main.name
+    storage_credential    = databricks_storage_credential.spotify_adls.name
+    external_locations    = [for location in databricks_external_location.layers : location.name]
+    unity_catalog         = databricks_catalog.spotify.name
+    unity_catalog_schemas = [for schema in databricks_schema.layers : schema.name]
+    sql_server            = azurerm_mssql_server.main.name
+    sql_database          = azurerm_mssql_database.main.name
+    key_vault             = azurerm_key_vault.main.name
+    logic_app             = azurerm_logic_app_workflow.metadata_handler.name
+    api_connection        = azurerm_api_connection.azuretables.name
   }
 }
