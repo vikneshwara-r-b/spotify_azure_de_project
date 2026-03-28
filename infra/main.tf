@@ -573,3 +573,74 @@ resource "azurerm_logic_app_action_custom" "condition" {
     azurerm_logic_app_workflow.metadata_handler
   ]
 }
+
+# ============================================================================
+# Databricks Unity Catalog - Storage Credential
+# ============================================================================
+
+resource "databricks_storage_credential" "spotify_adls" {
+  name    = var.unity_catalog_storage_credential_name
+  comment = "Storage credential for Spotify ADLS Gen2 using Access Connector managed identity"
+
+  azure_managed_identity {
+    access_connector_id = azurerm_databricks_access_connector.main.id
+  }
+
+  depends_on = [
+    azurerm_databricks_workspace.main,
+    azurerm_databricks_access_connector.main,
+    azurerm_role_assignment.access_connector_blob_contributor
+  ]
+}
+
+# ============================================================================
+# Databricks Unity Catalog - External Locations
+# ============================================================================
+
+# Create external locations dynamically for each container
+resource "databricks_external_location" "layers" {
+  for_each = toset(var.adls_containers)
+
+  name            = "spotify_${each.value}"
+  url             = "abfss://${each.value}@${azurerm_storage_account.adls.name}.dfs.core.windows.net/"
+  credential_name = databricks_storage_credential.spotify_adls.name
+  comment         = "${title(each.value)} layer for Spotify data"
+
+  depends_on = [
+    databricks_storage_credential.spotify_adls,
+    azurerm_storage_data_lake_gen2_filesystem.containers
+  ]
+}
+
+# ============================================================================
+# Databricks Unity Catalog - Catalog
+# ============================================================================
+
+resource "databricks_catalog" "spotify" {
+  name    = var.unity_catalog_name
+  comment = "Main catalog for Spotify data engineering project"
+
+  depends_on = [
+    databricks_storage_credential.spotify_adls,
+    databricks_external_location.layers
+  ]
+}
+
+# ============================================================================
+# Databricks Unity Catalog - Schemas
+# ============================================================================
+
+# Create schemas dynamically for each container
+resource "databricks_schema" "layers" {
+  for_each = toset(var.adls_containers)
+
+  catalog_name = databricks_catalog.spotify.name
+  name         = each.value
+  comment      = "${title(each.value)} layer schema for Spotify data"
+  storage_root = "abfss://${each.value}@${azurerm_storage_account.adls.name}.dfs.core.windows.net/"
+
+  depends_on = [
+    databricks_catalog.spotify,
+    databricks_external_location.layers
+  ]
+}

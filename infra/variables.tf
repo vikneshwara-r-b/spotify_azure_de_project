@@ -210,6 +210,58 @@ variable "logic_app_connection_name" {
 }
 
 # ============================================================================
+# Databricks Unity Catalog
+# ============================================================================
+
+variable "unity_catalog_storage_credential_name" {
+  description = "Name of the Unity Catalog storage credential"
+  type        = string
+  default     = "spotify_adls_credential"
+}
+
+variable "unity_catalog_external_location_bronze" {
+  description = "Name of the Bronze layer external location"
+  type        = string
+  default     = "spotify_bronze"
+}
+
+variable "unity_catalog_external_location_silver" {
+  description = "Name of the Silver layer external location"
+  type        = string
+  default     = "spotify_silver"
+}
+
+variable "unity_catalog_external_location_gold" {
+  description = "Name of the Gold layer external location"
+  type        = string
+  default     = "spotify_gold"
+}
+
+variable "unity_catalog_name" {
+  description = "Name of the Unity Catalog"
+  type        = string
+  default     = "spotify_catalog"
+}
+
+variable "unity_catalog_schema_bronze" {
+  description = "Name of the Bronze schema in Unity Catalog"
+  type        = string
+  default     = "bronze"
+}
+
+variable "unity_catalog_schema_silver" {
+  description = "Name of the Silver schema in Unity Catalog"
+  type        = string
+  default     = "silver"
+}
+
+variable "unity_catalog_schema_gold" {
+  description = "Name of the Gold schema in Unity Catalog"
+  type        = string
+  default     = "gold"
+}
+
+# ============================================================================
 # Tags
 # ============================================================================
 
