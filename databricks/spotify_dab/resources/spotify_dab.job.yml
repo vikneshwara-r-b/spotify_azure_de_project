@@ -29,7 +29,7 @@ resources:
             notebook_path: ../src/silver_dimensions.ipynb
             base_parameters:
               catalog_name: "spotify_catalog"
-              adls_storage_container_name: "${var.adls_storage_container_name}"
+              adls_storage_container_name: ${var.adls_storage_container_name}
         
         # ========================================================================
         # TASK 2: Gold Layer Transformations (Silver -> Gold) - For Each Loop
@@ -71,7 +71,7 @@ resources:
                 notebook_path: ../src/gold_dimensions.ipynb
                 base_parameters:
                   catalog_name: "spotify_catalog"
-                  adls_storage_container_name: "${var.adls_storage_container_name}"
+                  adls_storage_container_name: ${var.adls_storage_container_name}
                   source_schema_name: "silver"
                   source_table_name: "{{input.source_table}}"
                   pk_list: "{{input.pk_list}}"
