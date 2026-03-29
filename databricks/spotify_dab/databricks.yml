@@ -10,11 +10,11 @@ bundle:
 variables:
   user_email:
     description: "User email for permissions"
-    default: "${env.USER_EMAIL}"
+    default: ${env.USER_EMAIL}
   
   adls_storage_container_name:
     description: "ADLS Gen2 storage container name"
-    default: "${env.ADLS_STORAGE_CONTAINER_NAME}"
+    default: ${env.ADLS_STORAGE_CONTAINER_NAME}
 
 include:
   - resources/*.yml
