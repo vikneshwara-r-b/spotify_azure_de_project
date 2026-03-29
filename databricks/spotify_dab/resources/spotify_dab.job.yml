@@ -24,7 +24,6 @@ resources:
         # Uses Databricks Autoloader for incremental data ingestion
         # Implements CDC with hash_diff for change detection
         - task_key: silver_transformation_task
-          job_cluster_key: serverless_cluster
           notebook_task:
             notebook_path: ../src/silver_dimensions.ipynb
             base_parameters:
@@ -66,7 +65,6 @@ resources:
               ]
             task:
               task_key: process_gold_table
-              job_cluster_key: serverless_cluster
               notebook_task:
                 notebook_path: ../src/gold_dimensions.ipynb
                 base_parameters:
@@ -77,23 +75,3 @@ resources:
                   pk_list: "{{input.pk_list}}"
                   target_schema_name: "gold"
                   target_table_name: "{{input.target_table}}"
-      
-      # ========================================================================
-      # Compute Configuration
-      # ========================================================================
-      job_clusters:
-        - job_cluster_key: serverless_cluster
-          new_cluster:
-            # Single-node cluster configuration
-            # Uses driver-only mode for lightweight ETL workloads
-            spark_version: "15.4.x-scala2.12"
-            node_type_id: "Standard_DS3_v2"
-            num_workers: 0
-            spark_conf:
-              "spark.master": "local[*, 4]"
-              "spark.databricks.cluster.profile": "singleNode"
-            data_security_mode: "USER_ISOLATION"
-            custom_tags:
-              ResourceClass: "SingleNode"
-              project: "spotify_data_engineering"
-              layer: "etl_pipeline"
