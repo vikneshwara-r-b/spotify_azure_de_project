@@ -630,9 +630,9 @@ resource "databricks_catalog" "spotify" {
 # Databricks Unity Catalog - Schemas
 # ============================================================================
 
-# Create schemas dynamically for each container
+# Create schemas dynamically for each container (excluding bronze)
 resource "databricks_schema" "layers" {
-  for_each = toset(var.adls_containers)
+  for_each = toset([for container in var.adls_containers : container if container != "bronze"])
 
   catalog_name = databricks_catalog.spotify.name
   name         = each.value
