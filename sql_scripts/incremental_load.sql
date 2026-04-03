@@ -38,9 +38,9 @@ UPDATE DimArtist SET country = 'Spain',         updated_at = '2025-10-08 08:50:0
 
 UPDATE DimArtist SET genre = 'Rock',            updated_at = '2025-10-08 08:55:00' WHERE artist_id = 46;
 UPDATE DimArtist SET artist_name = 'Luna Vox',  updated_at = '2025-10-08 09:00:00' WHERE artist_id = 50;
-UPDATE DimArtist SET genre = 'Ambient',         updated_at = '2025-10-08 09:05:00' WHERE artist_id = 503;
-UPDATE DimArtist SET country = 'Italy',         updated_at = '2025-10-08 09:10:00' WHERE artist_id = 504;
-UPDATE DimArtist SET genre = 'Afrobeats',       updated_at = '2025-10-08 09:15:00' WHERE artist_id = 509;
+UPDATE DimArtist SET genre = 'Ambient',         updated_at = '2025-10-08 09:05:00' WHERE artist_id = 200;
+UPDATE DimArtist SET country = 'Italy',         updated_at = '2025-10-08 09:10:00' WHERE artist_id = 100;
+UPDATE DimArtist SET genre = 'Afrobeats',       updated_at = '2025-10-08 09:15:00' WHERE artist_id = 300;
 
 -- ============================================================
 -- DimTrack - BULK UPDATES (15 rows)
@@ -68,23 +68,23 @@ UPDATE DimTrack SET release_date = '2025-09-30',     updated_at = '2025-10-08 09
 -- FactStream - BULK UPDATES (15 rows)
 -- ============================================================
 
-UPDATE FactStream SET listen_duration = 205, stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 1001;
-UPDATE FactStream SET device_type = 'Mobile', stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 1002;
-UPDATE FactStream SET listen_duration = 300, stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 1003;
-UPDATE FactStream SET device_type = 'Desktop', stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 1004;
-UPDATE FactStream SET device_type = 'Mobile', stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 1000;
+UPDATE FactStream SET listen_duration = 205, stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 100;
+UPDATE FactStream SET device_type = 'Mobile', stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 101;
+UPDATE FactStream SET listen_duration = 300, stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 102;
+UPDATE FactStream SET device_type = 'Desktop', stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 103;
+UPDATE FactStream SET device_type = 'Mobile', stream_timestamp = '2025-10-08 09:15:00' WHERE stream_id = 104;
 
-UPDATE FactStream SET listen_duration = 190, stream_timestamp = '2025-10-08 09:30:00' WHERE stream_id = 1006;
-UPDATE FactStream SET device_type = 'Smart Speaker', stream_timestamp = '2025-10-08 09:30:00' WHERE stream_id = 1007;
-UPDATE FactStream SET listen_duration = 120, stream_timestamp = '2025-10-08 09:30:00' WHERE stream_id = 1008;
-UPDATE FactStream SET device_type = 'Mobile', stream_timestamp = '2025-10-08 09:30:00' WHERE stream_id = 1009;
-UPDATE FactStream SET listen_duration = 840, stream_timestamp = '2025-10-07 02:30:00' WHERE stream_id = 1010;
+UPDATE FactStream SET listen_duration = 190, stream_timestamp = '2025-10-08 09:30:00' WHERE stream_id = 200;
+UPDATE FactStream SET device_type = 'Smart Speaker', stream_timestamp = '2025-10-08 09:30:00' WHERE stream_id = 201;
+UPDATE FactStream SET listen_duration = 120, stream_timestamp = '2025-10-08 09:30:00' WHERE stream_id = 202;
+UPDATE FactStream SET device_type = 'Mobile', stream_timestamp = '2025-10-08 09:30:00' WHERE stream_id = 203;
+UPDATE FactStream SET listen_duration = 840, stream_timestamp = '2025-10-08 09:30:00' WHERE stream_id = 204;
 
-UPDATE FactStream SET listen_duration = 215, stream_timestamp = '2025-10-07 03:45:00' WHERE stream_id = 1011;
-UPDATE FactStream SET device_type = 'Desktop', stream_timestamp = '2025-10-07 03:45:00' WHERE stream_id = 1012;
-UPDATE FactStream SET listen_duration = 260, stream_timestamp = '2025-10-07 03:45:00' WHERE stream_id = 1013;
-UPDATE FactStream SET device_type = 'Mobile', stream_timestamp = '2025-10-07 03:45:00' WHERE stream_id = 1014;
-UPDATE FactStream SET listen_duration = 1000, stream_timestamp = '2025-10-07 03:45:00' WHERE stream_id = 1015;
+UPDATE FactStream SET listen_duration = 215, stream_timestamp = '2025-10-08 10:00:00' WHERE stream_id = 300;
+UPDATE FactStream SET device_type = 'Desktop', stream_timestamp = '2025-10-08 10:00:00' WHERE stream_id = 301;
+UPDATE FactStream SET listen_duration = 260, stream_timestamp = '2025-10-08 10:00:00' WHERE stream_id = 302;
+UPDATE FactStream SET device_type = 'Mobile', stream_timestamp = '2025-10-08 10:00:00' WHERE stream_id = 303;
+UPDATE FactStream SET listen_duration = 1000, stream_timestamp = '2025-10-08 10:00:00' WHERE stream_id = 304;
 
 -- ============================================================
 --  NEW ARTISTS (DimArtist)
