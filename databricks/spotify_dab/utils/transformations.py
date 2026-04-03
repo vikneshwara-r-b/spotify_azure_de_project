@@ -76,3 +76,33 @@ class reusable_transformations:
     
         spark.sql(create_stmt)
 
+    
+    def build_pk_join_string(self, pk_column_list):
+        pk_join_list = []
+        for column in pk_column_list:
+            pk_join_list.append("target." + column + " <=> source." + column)
+        pk_join_string = ' AND '.join(pk_join_list)
+        return pk_join_string
+
+    def build_prep_merge_column_list_string(self, prep_new_data_df):
+        prep_merge_column_list_string = None
+        column_list = prep_new_data_df.columns
+        print("Columns List:", column_list)
+        metadata_columns = ['ingested_at', '_rescued_data']
+        filtered_column_list = list(filter(lambda x: x not in metadata_columns, column_list))
+        prep_merge_column_list = []
+        for column in filtered_column_list:
+            prep_merge_column_list.append("target." + column + " <=> source." + column)
+        prep_merge_column_list_string = ' AND '.join(prep_merge_column_list)
+        prep_merge_column_list_string = '!(' + prep_merge_column_list_string + ')'
+        return prep_merge_column_list_string
+
+    def perform_merge_operation(self, target_table_delta, merge_keys_list, prep_merge_column_list_string):
+        def _microbatch_merge_operation(batch_df, batch_id):
+            (target_table_delta.alias("target")
+                 .merge(batch_df.alias("source"), merge_keys_list)
+                 .whenMatchedUpdateAll(prep_merge_column_list_string)
+                 .whenNotMatchedInsertAll()
+                 .execute()
+            )
+        return _microbatch_merge_operation
