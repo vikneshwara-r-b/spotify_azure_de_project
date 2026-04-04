@@ -1,5 +1,7 @@
 # Databricks Asset Bundle Deployment Guide
 
+> 📖 **Quick Start**: See [../README.md](../../README.md) for project overview and [../../ARCHITECTURE.md](../../ARCHITECTURE.md) for system design.
+
 ## 📋 Prerequisites
 
 1. **Databricks CLI installed**:
@@ -14,6 +16,8 @@
    cd ../../infra
    terraform apply
    ```
+   
+   > ⚠️ **Important**: Ensure Terraform completes successfully and Unity Catalog resources (storage credential, external locations, catalog, schemas) are created.
 
 3. **Authentication configured**:
    ```bash
