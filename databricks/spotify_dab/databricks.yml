@@ -30,6 +30,8 @@ targets:
     mode: development
     default: true
     permissions:
+      - user_name: ${var.user_email}
+        level: CAN_MANAGE
       - service_principal_name: "677878f6-17a1-41ad-b8bd-aef1efa9f1dd"
         level: CAN_MANAGE
 
