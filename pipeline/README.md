@@ -931,20 +931,14 @@ az keyvault secret set \
 }
 ```
 
-### **Cost Optimization**
+### **Performance Optimization Tips**
 
-| Activity Type | Cost Factor | Optimization |
-|---------------|-------------|--------------|
-| **Copy Activity** | Data volume + duration | Use incremental loading (watermarks) |
-| **Lookup Activity** | Query execution | Indexed watermark columns |
-| **WebActivity** | API calls | Batch operations where possible |
-| **DatabricksJob** | Job execution time | Serverless compute (pay per second) |
-
-**Estimated Cost per Run**:
-- Pipeline activities: ~$0.01-0.05
-- Data movement: $0.10-0.25 per GB
-- Databricks: $2-5 per run (serverless)
-- **Total**: ~$2-6 per full pipeline execution
+| Activity Type | Optimization Strategy |
+|---------------|----------------------|
+| **Copy Activity** | Use incremental loading (watermarks) to minimize data volume |
+| **Lookup Activity** | Index watermark columns for faster queries |
+| **WebActivity** | Batch operations where possible |
+| **DatabricksJob** | Serverless compute provides auto-scaling |
 
 ---
 

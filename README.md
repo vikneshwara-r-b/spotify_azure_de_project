@@ -1,6 +1,6 @@
 # 🎵 Spotify Azure Data Engineering Project
 
-A production-grade **Medallion Architecture** ETL pipeline built on Azure, demonstrating modern data engineering practices with synthetic Spotify streaming data.
+A production-grade **Medallion Architecture** batch ETL pipeline built on Azure, demonstrating modern data engineering practices with synthetic Spotify data.
 
 [![Azure](https://img.shields.io/badge/Azure-0078D4?style=flat&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/)
 [![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=flat&logo=databricks&logoColor=white)](https://databricks.com/)
@@ -25,17 +25,20 @@ A production-grade **Medallion Architecture** ETL pipeline built on Azure, demon
 
 ## 🎯 Overview
 
-This project implements an **end-to-end data engineering solution** for analyzing fictional Spotify streaming data using Azure cloud services. It showcases:
+This project implements an **end-to-end batch data engineering solution** for analyzing fictional Spotify data using Azure cloud services. It showcases:
 
 - **Medallion Architecture** (Bronze → Silver → Gold layers)
-- **Incremental Data Loading** with watermark-based CDC
+- **Scheduled Batch Processing** with watermark-based incremental loading
+- **Change Data Capture (CDC)** with hash-based change detection
 - **SCD Type 2** dimensional modeling
 - **Infrastructure as Code** with Terraform
 - **Databricks Asset Bundles** for workflow orchestration
-- **Azure Data Factory** for data ingestion
+- **Azure Data Factory** for data ingestion orchestration
 - **Unity Catalog** for data governance
 
-**Data Source**: Azure SQL Database with synthetic Spotify data (500 users, 500 artists, 1000 tracks, streaming facts)
+**Data Source**: Azure SQL Database with synthetic Spotify data (500 users, 500 artists, 1000 tracks, stream events)
+
+**Processing Pattern**: Scheduled batch pipeline (daily) using Spark Structured Streaming APIs in micro-batch mode (`trigger=availableNow`) for incremental processing with checkpoint management
 
 ---
 
@@ -81,13 +84,14 @@ This project implements an **end-to-end data engineering solution** for analyzin
                     │  📂 gold/    ← SCD Type 2 Analytics   │
                     └────────────────┬──────────────────────┘
                                      │
-                                     │ ③ Structured Streaming + CDC
+                                     │ ③ Micro-Batch Processing + CDC
                                      ▼
                     ┌──────────────────────────────────────┐
                     │   AZURE DATABRICKS WORKFLOW          │
+                    │   (Scheduled Batch - Daily)          │
                     │                                       │
                     │  🔹 Task 1: Silver Transformation     │
-                    │     • Autoloader (cloudFiles)         │
+                    │     • Autoloader (incremental)        │
                     │     • Hash-based CDC (hash_diff)      │
                     │     • Merge operations                │
                     │     • Bronze → Silver Delta Tables    │
@@ -363,14 +367,15 @@ spotify_azure_de_project/
     └─ Updates watermark in Azure Table
     └─ Triggers Databricks workflow via MSI
 
-2️⃣  BRONZE → SILVER TRANSFORMATION (Databricks)
-    └─ Autoloader streams Parquet files from Bronze
+2️⃣  BRONZE → SILVER TRANSFORMATION (Databricks - Micro-Batch)
+    └─ Autoloader processes Parquet files incrementally from Bronze
     └─ Applies business transformations:
        • Convert names to uppercase
        • Calculate duration flags
        • Clean track names
     └─ Computes hash_diff for CDC
     └─ Merges into Silver Delta tables (upsert logic)
+    └─ Uses Spark Structured Streaming APIs with trigger=availableNow (micro-batch)
 
 3️⃣  SILVER → GOLD TRANSFORMATION (Databricks)
     └─ For-each-task processes tables in parallel:
@@ -527,22 +532,7 @@ ORDER BY active_start_date_time DESC;
 
 ---
 
-## 💰 Cost Estimate
-
-**Approximate Monthly Cost (US East)**:
-- Azure Databricks Premium: ~$100-500 (usage-based)
-- ADLS Gen2: ~$5-20 (storage-based)
-- Azure SQL Database (Basic): ~$5
-- Azure Data Factory: ~$10-50 (pipeline runs)
-- Key Vault: ~$1
-- Logic App: ~$1
-- **Total**: ~$120-575/month
-
-💡 **Cost Optimization**: Use Databricks autoscaling, ADLS lifecycle policies, and efficient pipeline scheduling.
-
----
-
-## 📖 Getting Help
+##  Getting Help
 
 1. **Documentation**: Start with [ARCHITECTURE.md](ARCHITECTURE.md) for system design
 2. **Deployment Issues**: Check [infra/README.md](infra/README.md) troubleshooting section
