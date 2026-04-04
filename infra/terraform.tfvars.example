@@ -102,7 +102,7 @@ key_vault_sku  = "standard"  # Options: standard, premium
 # ============================================================================
 
 # Azure Table name for metadata storage
-azure_table_name = "ingestionmetadatastore"
+azure_table_name = "ingestionmetadata"
 
 # ============================================================================
 # Azure Logic App

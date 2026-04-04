@@ -1,0 +1,592 @@
+# 🎵 Spotify Azure Data Engineering Project
+
+A production-grade **Medallion Architecture** ETL pipeline built on Azure, demonstrating modern data engineering practices with synthetic Spotify streaming data.
+
+[![Azure](https://img.shields.io/badge/Azure-0078D4?style=flat&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/)
+[![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=flat&logo=databricks&logoColor=white)](https://databricks.com/)
+[![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat&logo=terraform&logoColor=white)](https://www.terraform.io/)
+
+---
+
+## 📋 Table of Contents
+
+- [Overview](#-overview)
+- [Architecture](#-architecture)
+- [Technology Stack](#-technology-stack)
+- [Key Features](#-key-features)
+- [Quick Start](#-quick-start)
+- [Repository Structure](#-repository-structure)
+- [Data Flow](#-data-flow)
+- [Prerequisites](#-prerequisites)
+- [Detailed Documentation](#-detailed-documentation)
+- [Contributing](#-contributing)
+
+---
+
+## 🎯 Overview
+
+This project implements an **end-to-end data engineering solution** for analyzing fictional Spotify streaming data using Azure cloud services. It showcases:
+
+- **Medallion Architecture** (Bronze → Silver → Gold layers)
+- **Incremental Data Loading** with watermark-based CDC
+- **SCD Type 2** dimensional modeling
+- **Infrastructure as Code** with Terraform
+- **Databricks Asset Bundles** for workflow orchestration
+- **Azure Data Factory** for data ingestion
+- **Unity Catalog** for data governance
+
+**Data Source**: Azure SQL Database with synthetic Spotify data (500 users, 500 artists, 1000 tracks, streaming facts)
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      SPOTIFY DATA ENGINEERING PIPELINE                   │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────┐       ┌──────────────────┐       ┌─────────────────┐
+│   Azure SQL DB   │       │  Azure Key Vault │       │  Azure Table    │
+│   (Source)       │       │  (Secrets)       │       │  (Metadata)     │
+│                  │       │                  │       │                 │
+│ • DimUser        │       │ • SQL Password   │       │ • Watermarks    │
+│ • DimArtist      │───────│ • ADLS Keys      │───────│ • Last Load TS  │
+│ • DimTrack       │       │ • Connections    │       │                 │
+│ • DimDate        │       │ • Databricks URL │       │                 │
+│ • FactStream     │       └──────────────────┘       └─────────────────┘
+└────────┬─────────┘                                           ▲
+         │                                                     │
+         │ ①  Incremental Extract (Watermark-based)           │
+         ▼                                                     │
+┌─────────────────────────────────────────────────────────────┴──────────┐
+│                    AZURE DATA FACTORY (ADF)                             │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │ Pipeline: pl_spotify_data_ingestion                              │  │
+│  │ • Get Old Watermark (Azure Table via Logic App)                  │  │
+│  │ • Get New Watermark (SQL Query)                                  │  │
+│  │ • Copy Activity (SQL → Parquet)                                  │  │
+│  │ • Update Watermark (Azure Table)                                 │  │
+│  │ • Trigger Databricks Workflow (MSI Auth)                         │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────┬─────────────────────────────────┘
+                                        │
+                                        │ ②  Parquet Files
+                                        ▼
+                    ┌──────────────────────────────────────┐
+                    │   ADLS Gen2 (Data Lake)               │
+                    │                                       │
+                    │  📂 bronze/  ← Raw Parquet Files      │
+                    │  📂 silver/  ← Cleaned & Conformed    │
+                    │  📂 gold/    ← SCD Type 2 Analytics   │
+                    └────────────────┬──────────────────────┘
+                                     │
+                                     │ ③ Structured Streaming + CDC
+                                     ▼
+                    ┌──────────────────────────────────────┐
+                    │   AZURE DATABRICKS WORKFLOW          │
+                    │                                       │
+                    │  🔹 Task 1: Silver Transformation     │
+                    │     • Autoloader (cloudFiles)         │
+                    │     • Hash-based CDC (hash_diff)      │
+                    │     • Merge operations                │
+                    │     • Bronze → Silver Delta Tables    │
+                    │                                       │
+                    │  🔹 Task 2: Gold Transformation       │
+                    │     • SCD Type 2 implementation       │
+                    │     • For-each-task (parallel)        │
+                    │     • Surrogate key generation        │
+                    │     • Silver → Gold Delta Tables      │
+                    │                                       │
+                    │  🚀 Serverless Compute Cluster        │
+                    └──────────────────────────────────────┘
+                                     │
+                                     │ ④ Analytics-Ready Data
+                                     ▼
+                    ┌──────────────────────────────────────┐
+                    │  UNITY CATALOG (spotify_catalog)      │
+                    │                                       │
+                    │  📊 Gold Layer Tables (SCD Type 2)    │
+                    │     • dimuser (with history)          │
+                    │     • dimartist (with history)        │
+                    │     • dimtrack (with history)         │
+                    │     • factstream (slowly changing)    │
+                    │                                       │
+                    │  🔍 Ready for BI & Analytics          │
+                    └──────────────────────────────────────┘
+```
+
+### Mermaid Architecture Diagram
+
+```mermaid
+flowchart TB
+    subgraph Source["🗄️ DATA SOURCE"]
+        SQL[(Azure SQL Database<br/>spotifydb)]
+    end
+    
+    subgraph Orchestration["🔄 ORCHESTRATION LAYER"]
+        KV[Azure Key Vault<br/>Secrets Management]
+        ATable[Azure Table Storage<br/>Watermark Metadata]
+        Logic[Logic App<br/>Metadata API]
+        ADF[Azure Data Factory<br/>Ingestion Pipeline]
+    end
+    
+    subgraph Storage["💾 DATA LAKE - ADLS Gen2"]
+        Bronze[📂 Bronze Layer<br/>Raw Parquet Files]
+        Silver[📂 Silver Layer<br/>Cleaned Delta Tables]
+        Gold[📂 Gold Layer<br/>SCD Type 2 Tables]
+    end
+    
+    subgraph Processing["⚙️ PROCESSING LAYER"]
+        DBW[Azure Databricks<br/>Serverless Workflow]
+        DAB[Databricks Asset Bundle<br/>spotify_dab]
+        NB1[Notebook: silver_dimensions<br/>Autoloader + CDC]
+        NB2[Notebook: gold_dimensions<br/>SCD Type 2]
+    end
+    
+    subgraph Governance["🛡️ DATA GOVERNANCE"]
+        UC[Unity Catalog<br/>spotify_catalog]
+        UC_Silver[Silver Schema]
+        UC_Gold[Gold Schema]
+    end
+    
+    SQL -->|Watermark Query| ADF
+    KV -->|Secrets| ADF
+    ATable -->|Old Watermark| ADF
+    Logic <-->|HTTP API| ADF
+    ADF -->|Copy Activity| Bronze
+    ADF -->|Update Watermark| ATable
+    ADF -->|Trigger Job MSI| DBW
+    
+    Bronze -->|Autoloader Stream| NB1
+    NB1 -->|Hash-based CDC| Silver
+    Silver -->|Incremental| NB2
+    NB2 -->|SCD Type 2| Gold
+    
+    DBW --> DAB
+    DAB --> NB1
+    DAB --> NB2
+    
+    Silver --> UC_Silver
+    Gold --> UC_Gold
+    UC_Silver --> UC
+    UC_Gold --> UC
+    
+    style SQL fill:#e1f5ff
+    style ADF fill:#ffe1e1
+    style Bronze fill:#cd7f32,color:#fff
+    style Silver fill:#c0c0c0
+    style Gold fill:#ffd700
+    style DBW fill:#ff6b35
+    style UC fill:#4CAF50
+```
+
+---
+
+## 💻 Technology Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Infrastructure** | Terraform | Infrastructure as Code deployment |
+| **Source Database** | Azure SQL Database | Relational data storage (synthetic Spotify data) |
+| **Orchestration** | Azure Data Factory v2 | ETL pipeline orchestration & scheduling |
+| **Data Lake** | ADLS Gen2 | Medallion architecture storage (Bronze/Silver/Gold) |
+| **Processing** | Azure Databricks (Premium) | Distributed data processing with Spark |
+| **Workflow Management** | Databricks Asset Bundles | CI/CD for Databricks resources |
+| **Compute** | Serverless Databricks Cluster | On-demand compute for notebooks |
+| **Data Governance** | Unity Catalog | Centralized metadata & access control |
+| **Secrets Management** | Azure Key Vault | Secure credential storage |
+| **Metadata Store** | Azure Table Storage | Watermark tracking for incremental loads |
+| **API Layer** | Azure Logic Apps | REST API for metadata operations |
+| **Language** | Python 3.10+ | Transformation logic & utilities |
+| **Data Format** | Parquet, Delta Lake | Efficient columnar storage |
+
+---
+
+## 🌟 Key Features
+
+### 1. **Medallion Architecture (Bronze → Silver → Gold)**
+- **Bronze**: Raw data ingestion as Parquet files from source
+- **Silver**: Cleaned, deduplicated, conformed data with CDC
+- **Gold**: Business-ready dimensional model with SCD Type 2
+
+### 2. **Incremental Data Loading**
+- Watermark-based CDC using Azure Table Storage
+- Only extracts changed/new records
+- Efficient resource utilization
+
+### 3. **Change Data Capture (CDC)**
+- Hash-based change detection using SHA-256
+- Automatic identification of inserts/updates
+- Delta merge operations for upserts
+
+### 4. **Slowly Changing Dimensions (SCD Type 2)**
+- Historical tracking of dimension changes
+- Surrogate key generation
+- Active/inactive record management
+- Temporal validity with start/end timestamps
+
+### 5. **Infrastructure as Code**
+- Complete Azure infrastructure via Terraform
+- Automated RBAC assignments
+- Managed identity authentication
+- One-command deployment
+
+### 6. **Data Governance**
+- Unity Catalog integration
+- External locations for each layer
+- Centralized metadata management
+- Role-based access control
+
+### 7. **Secure by Design**
+- Azure Key Vault for all credentials
+- Managed Identity authentication (no passwords in code)
+- RBAC for storage access
+- Parameterized ADF pipelines
+
+---
+
+## 🚀 Quick Start
+
+### **5-Step Setup**
+
+```bash
+# Step 1: Deploy Azure Infrastructure (5-10 minutes)
+cd infra
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+terraform init
+terraform apply
+
+# Step 2: Initialize Source Database
+# Use Azure Portal or SQL client to execute:
+# - sql_scripts/ddl_script.sql
+# - sql_scripts/initial_load.sql
+
+# Step 3: Seed Metadata Store (One-time)
+# In ADF Studio: Run pipeline pl_seed_ingestion_metadata
+
+# Step 4: Deploy Databricks Asset Bundle
+cd ../databricks/spotify_dab
+export DATABRICKS_HOST="https://$(cd ../../infra && terraform output -raw databricks_workspace_url)"
+export ADLS_STORAGE_CONTAINER_NAME=$(cd ../../infra && terraform output -raw storage_account_name)
+export ADF_SERVICE_PRINCIPAL_ID=$(cd ../../infra && terraform output -raw adf_managed_identity_application_id)
+databricks bundle deploy --target dev
+
+# Step 5: Run the Pipeline
+# In ADF Studio: Trigger pl_spotify_data_ingestion
+# Or use Databricks: databricks bundle run spotify_etl_job --target dev
+```
+
+📖 **Detailed guides**: See [infra/README.md](infra/README.md) and [databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)
+
+---
+
+## 📁 Repository Structure
+
+```
+spotify_azure_de_project/
+│
+├── README.md                          ← You are here
+├── ARCHITECTURE.md                    ← Deep-dive technical architecture
+├── .gitignore                         ← Git ignore rules
+│
+├── 🏗️  infra/                         ← Terraform Infrastructure as Code
+│   ├── README.md                      ← Infrastructure deployment guide
+│   ├── main.tf                        ← Main resource definitions
+│   ├── variables.tf                   ← Input variables
+│   ├── outputs.tf                     ← Output values
+│   ├── providers.tf                   ← Provider configuration
+│   ├── terraform.tfvars.example       ← Example configuration
+│   └── .gitignore
+│
+├── 📊 sql_scripts/                    ← Source Database SQL Scripts
+│   ├── README.md                      ← SQL scripts documentation
+│   ├── ddl_script.sql                 ← Table definitions (star schema)
+│   ├── initial_load.sql               ← Seed data (500 users, 500 artists, etc.)
+│   └── incremental_load.sql           ← CDC simulation (updates + inserts)
+│
+├── 🔄 pipeline/                       ← Azure Data Factory Pipelines
+│   ├── README.md                      ← Pipeline documentation
+│   ├── pl_spotify_data_ingestion.json ← Main ingestion pipeline
+│   └── pl_seed_ingestion_metadata.json← One-time metadata setup
+│
+├── 🔗 linkedService/                  ← ADF Linked Services
+│   ├── README.md                      ← Linked services documentation
+│   ├── ls_kv_connection.json          ← Key Vault connection
+│   ├── ls_mssql_server_connection.json← SQL Server connection
+│   ├── ls_adls_storage_account_connection.json ← ADLS connection
+│   └── ls_azure_databricks_connection.json     ← Databricks MSI connection
+│
+├── 📦 dataset/                        ← ADF Dataset Definitions
+│   ├── README.md                      ← Dataset documentation
+│   ├── ds_source_mssql_query.json     ← SQL source dataset
+│   └── ds_adls_sink_parquet.json      ← Parquet sink dataset
+│
+├── 🏭 factory/                        ← ADF Factory Configuration
+│   └── adf-spotify-v1.json            ← Global parameters
+│
+└── 🔥 databricks/                     ← Databricks Processing Layer
+    ├── README.md                      ← Databricks folder overview
+    └── spotify_dab/                   ← Databricks Asset Bundle
+        ├── README.md                  ← DAB project documentation
+        ├── DEPLOYMENT.md              ← Deployment guide
+        ├── databricks.yml             ← Bundle configuration
+        ├── pyproject.toml             ← Python dependencies
+        ├── .env.example               ← Environment variables template
+        │
+        ├── src/                       ← Transformation Notebooks
+        │   ├── silver_dimensions.ipynb← Bronze → Silver (CDC)
+        │   └── gold_dimensions.ipynb  ← Silver → Gold (SCD Type 2)
+        │
+        ├── utils/                     ← Reusable Python Modules
+        │   └── transformations.py     ← CDC & SCD helper functions
+        │
+        ├── resources/                 ← Databricks Workflow Definitions
+        │   └── spotify_dab.job.yml    ← Workflow job configuration
+        │
+        └── jinja/                     ← Jinja templates (optional)
+            └── jinja_notebook.ipynb
+```
+
+---
+
+## 🔄 Data Flow
+
+### **End-to-End Pipeline Execution**
+
+```
+1️⃣  SOURCE EXTRACTION (Azure Data Factory)
+    └─ ADF reads watermark from Azure Table Storage
+    └─ Extracts incremental records from Azure SQL DB
+    └─ Writes Parquet files to ADLS Gen2 Bronze layer
+    └─ Updates watermark in Azure Table
+    └─ Triggers Databricks workflow via MSI
+
+2️⃣  BRONZE → SILVER TRANSFORMATION (Databricks)
+    └─ Autoloader streams Parquet files from Bronze
+    └─ Applies business transformations:
+       • Convert names to uppercase
+       • Calculate duration flags
+       • Clean track names
+    └─ Computes hash_diff for CDC
+    └─ Merges into Silver Delta tables (upsert logic)
+
+3️⃣  SILVER → GOLD TRANSFORMATION (Databricks)
+    └─ For-each-task processes tables in parallel:
+       • DimUser, DimArtist, DimTrack, FactStream
+    └─ Implements SCD Type 2:
+       • Generates surrogate keys
+       • Tracks historical changes
+       • Sets active_start/end timestamps
+       • Expires old records (is_current = false)
+    └─ Creates analytics-ready dimensional model
+
+4️⃣  CONSUMPTION (Unity Catalog)
+    └─ Gold tables available in spotify_catalog.gold.*
+    └─ Ready for BI tools, SQL analytics, ML models
+```
+
+---
+
+## ✅ Prerequisites
+
+### **Required Tools**
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) (>= 2.50.0)
+- [Terraform](https://www.terraform.io/downloads) (>= 1.0)
+- [Databricks CLI](https://docs.databricks.com/dev-tools/cli/) (>= 0.210)
+- Python 3.10+ (for Databricks development)
+
+### **Azure Requirements**
+- Active Azure subscription
+- Contributor role or higher
+- Azure CLI authenticated (`az login`)
+
+### **Optional (for development)**
+- VS Code with Databricks extension
+- SQL Server Management Studio or Azure Data Studio
+- Git for version control
+
+---
+
+## 📚 Detailed Documentation
+
+| Documentation | Description |
+|--------------|-------------|
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | Comprehensive architecture deep-dive |
+| **[infra/README.md](infra/README.md)** | Terraform infrastructure deployment guide |
+| **[databricks/spotify_dab/README.md](databricks/spotify_dab/README.md)** | Databricks Asset Bundle documentation |
+| **[databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)** | DAB deployment methods & troubleshooting |
+| **[sql_scripts/README.md](sql_scripts/README.md)** | SQL schema & data loading guide |
+| **[pipeline/README.md](pipeline/README.md)** | ADF pipeline architecture & configuration |
+| **[linkedService/README.md](linkedService/README.md)** | ADF linked services documentation |
+| **[dataset/README.md](dataset/README.md)** | ADF dataset definitions |
+
+---
+
+## 🎓 Learning Objectives
+
+This project demonstrates:
+
+1. **Modern Data Engineering**: Medallion architecture, Delta Lake, CDC
+2. **Cloud-Native Development**: Azure PaaS services, managed identities
+3. **Infrastructure as Code**: Terraform for reproducible deployments
+4. **Data Governance**: Unity Catalog, external locations, RBAC
+5. **Dimensional Modeling**: Star schema, SCD Type 2
+6. **DevOps Practices**: Databricks Asset Bundles, CI/CD readiness
+7. **Security Best Practices**: Key Vault, MSI authentication, no hardcoded secrets
+
+---
+
+## 🔧 Common Operations
+
+### **Run Complete Pipeline**
+```bash
+# Trigger from ADF Studio
+# Or via Azure CLI
+az datafactory pipeline create-run \
+  --resource-group rg-spotify-dataeng \
+  --factory-name adf-spotify-<suffix> \
+  --name pl_spotify_data_ingestion
+```
+
+### **Run Databricks Workflow**
+```bash
+cd databricks/spotify_dab
+databricks bundle run spotify_etl_job --target dev
+```
+
+### **Simulate Data Changes**
+```sql
+-- Execute in Azure SQL Database
+-- File: sql_scripts/incremental_load.sql
+-- Triggers CDC detection in next pipeline run
+```
+
+### **Query Gold Layer**
+```sql
+-- In Databricks SQL or notebook
+SELECT * FROM spotify_catalog.gold.dimuser 
+WHERE is_current = true
+ORDER BY active_start_date_time DESC;
+```
+
+### **Check Pipeline Status**
+```bash
+# List ADF pipeline runs
+az datafactory pipeline-run list \
+  --resource-group rg-spotify-dataeng \
+  --factory-name adf-spotify-<suffix>
+
+# List Databricks job runs
+databricks jobs list-runs --job-id <job-id>
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### **Common Issues**
+
+| Issue | Solution |
+|-------|----------|
+| Terraform: "StorageAccountAlreadyTaken" | Change `resource_suffix` in terraform.tfvars |
+| ADF: "KeyVault access denied" | Ensure ADF MSI has Key Vault Secrets User role |
+| Databricks: "Reference to undeclared resource" | Set environment variables or use --var flags |
+| Unity Catalog: "Storage credential failed" | Verify Access Connector RBAC roles on ADLS |
+
+📖 See detailed troubleshooting in individual READMEs.
+
+---
+
+## 🧪 Testing the Pipeline
+
+### **1. Initial Load Test**
+```bash
+# Execute initial_load.sql → Run ADF pipeline → Verify Bronze/Silver/Gold
+```
+
+### **2. Incremental Load Test**
+```bash
+# Execute incremental_load.sql → Run ADF pipeline → Verify CDC detection
+```
+
+### **3. Validation Queries**
+```sql
+-- Check record counts
+SELECT 'Silver' as layer, count(*) FROM spotify_catalog.silver.dimuser
+UNION ALL
+SELECT 'Gold', count(*) FROM spotify_catalog.gold.dimuser;
+
+-- Verify SCD Type 2 history
+SELECT user_id, user_name, is_current, active_start_date_time, active_end_date_time
+FROM spotify_catalog.gold.dimuser
+WHERE user_id = 2
+ORDER BY active_start_date_time DESC;
+```
+
+---
+
+## 💰 Cost Estimate
+
+**Approximate Monthly Cost (US East)**:
+- Azure Databricks Premium: ~$100-500 (usage-based)
+- ADLS Gen2: ~$5-20 (storage-based)
+- Azure SQL Database (Basic): ~$5
+- Azure Data Factory: ~$10-50 (pipeline runs)
+- Key Vault: ~$1
+- Logic App: ~$1
+- **Total**: ~$120-575/month
+
+💡 **Cost Optimization**: Use Databricks autoscaling, ADLS lifecycle policies, and efficient pipeline scheduling.
+
+---
+
+## 📖 Getting Help
+
+1. **Documentation**: Start with [ARCHITECTURE.md](ARCHITECTURE.md) for system design
+2. **Deployment Issues**: Check [infra/README.md](infra/README.md) troubleshooting section
+3. **Databricks Problems**: See [databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)
+4. **Pipeline Debugging**: Refer to [pipeline/README.md](pipeline/README.md)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! To contribute:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is provided as-is for educational and portfolio purposes.
+
+---
+
+## 👤 Author
+
+**Vikneshwara R B**
+
+📧 Contact: [GitHub Profile](https://github.com/vikneshwara-r-b/spotify_azure_de_project)
+
+---
+
+## 🌟 Acknowledgments
+
+- **Medallion Architecture**: Databricks best practices
+- **Synthetic Data**: Generated using Python Faker library
+- **Azure Icons**: Microsoft Azure documentation
+- **Design Patterns**: Industry-standard data engineering patterns
+
+---
+
+**⭐ Star this repo if you found it helpful!**
+
+**Last Updated**: April 4, 2026  
+**Status**: Production-Ready Demo Project

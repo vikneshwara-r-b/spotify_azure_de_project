@@ -91,7 +91,7 @@ variable "storage_account_name" {
 variable "adls_containers" {
   description = "List of container names to create in ADLS Gen2"
   type        = list(string)
-  default     = ["raw", "bronze", "silver", "gold"]
+  default     = ["bronze", "silver", "gold"]
 }
 
 # ============================================================================
@@ -190,7 +190,7 @@ variable "key_vault_sku" {
 variable "azure_table_name" {
   description = "Name of the Azure Table for metadata storage"
   type        = string
-  default     = "samplemetadatastore"
+  default     = "ingestionmetadata"
 }
 
 # ============================================================================
