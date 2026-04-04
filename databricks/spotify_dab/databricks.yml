@@ -15,6 +15,10 @@ variables:
   adls_storage_container_name:
     description: "ADLS Gen2 storage container name"
     default: ${env.ADLS_STORAGE_CONTAINER_NAME}
+  
+  adf_service_principal_id:
+    description: "ADF Managed Identity Application ID for job permissions"
+    default: ${env.ADF_SERVICE_PRINCIPAL_ID}
 
 include:
   - resources/*.yml
@@ -32,7 +36,7 @@ targets:
     permissions:
       - user_name: ${var.user_email}
         level: CAN_MANAGE
-      - service_principal_name: "677878f6-17a1-41ad-b8bd-aef1efa9f1dd"
+      - service_principal_name: ${var.adf_service_principal_id}
         level: CAN_MANAGE
 
   prod:
@@ -42,4 +46,6 @@ targets:
       root_path: /Workspace/PROD/.bundle/${bundle.name}/${bundle.target}
     permissions:
       - user_name: ${var.user_email}
+        level: CAN_MANAGE
+      - service_principal_name: ${var.adf_service_principal_id}
         level: CAN_MANAGE

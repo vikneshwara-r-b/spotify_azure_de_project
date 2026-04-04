@@ -292,6 +292,15 @@ output "databricks_workspace_resource_id_for_linked_service" {
 }
 
 # ============================================================================
+# ADF Managed Identity for Databricks Bundle
+# ============================================================================
+
+output "adf_managed_identity_application_id" {
+  description = "ADF Managed Identity Application ID - USE THIS for Databricks bundle permissions"
+  value       = azurerm_data_factory.main.identity[0].principal_id
+}
+
+# ============================================================================
 # Summary Output
 # ============================================================================
 
