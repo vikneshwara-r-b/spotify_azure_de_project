@@ -330,15 +330,58 @@ terraform output adf_studio_url
 - Create linked services (ADLS, SQL, Databricks)
 - Import or create pipelines
 
-### 4. Verify Key Vault Secrets
+### 4. ADF → Databricks Integration (MSI Authentication)
+
+Terraform automatically registers ADF's managed identity in Databricks for job execution.
+
+**Create Databricks Linked Service in ADF Studio:**
+
+1. Get the workspace resource ID:
+   ```bash
+   terraform output -raw databricks_workspace_resource_id_for_linked_service
+   ```
+
+2. In ADF Studio:
+   - Navigate to: **Manage → Linked Services → + New**
+   - Select: **Azure Databricks**
+   - Configure:
+     - **Name:** `ls_databricks_connection`
+     - **Authentication:** System Assigned Managed Identity
+     - **Workspace Resource ID:** (paste from step 1)
+   - **Test Connection** ✅
+   - **Create**
+
+**Key Vault Secrets Available:**
+- `databricks-workspace-resource-id` - For linked service configuration
+- `databricks-workspace-url` - For API calls and connections
+
+**Verify Service Principal in Databricks:**
+```sql
+%sql
+SELECT * FROM system.access.service_principals 
+WHERE display_name LIKE 'ADF-%'
+```
+
+**Usage in ADF Pipelines:**
+- Use `DatabricksNotebook` activity to run notebooks
+- Use `WebActivity` with Databricks Jobs API to trigger workflows
+- ADF can execute any job in the workspace
+
+### 5. Verify Key Vault Secrets
 
 ```bash
-# List secrets
+# List all secrets
 az keyvault secret list --vault-name $(terraform output -raw key_vault_name)
 
 # View secret names (not values)
 terraform output key_vault_secrets
 ```
+
+**Secrets stored:**
+- ADLS connection details (key, name, URL)
+- SQL Server credentials (username, password, FQDN)
+- Databricks connection details (workspace resource ID, URL)
+- Logic App endpoint (for metadata operations)
 
 ---
 
@@ -553,6 +596,6 @@ This project is provided as-is for educational and development purposes.
 
 ---
 
-**Last Updated:** March 16, 2026  
+**Last Updated:** April 4, 2026  
 **Terraform Version:** >= 1.0  
 **Azure Provider Version:** ~> 4.0

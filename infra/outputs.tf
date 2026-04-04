@@ -191,6 +191,8 @@ output "key_vault_secrets" {
     sql_admin_username               = azurerm_key_vault_secret.sql_admin_username.name
     sql_source_server_name           = azurerm_key_vault_secret.sql_source_server_name.name
     azure_table_interaction_endpoint = azurerm_key_vault_secret.logic_app_trigger_url.name
+    databricks_workspace_resource_id = azurerm_key_vault_secret.databricks_workspace_resource_id.name
+    databricks_workspace_url         = azurerm_key_vault_secret.databricks_workspace_url.name
   }
 }
 
@@ -271,28 +273,57 @@ output "unity_catalog_schemas" {
 }
 
 # ============================================================================
+# ADF → Databricks Integration
+# ============================================================================
+
+output "adf_databricks_service_principal_id" {
+  description = "ADF Managed Identity registered as Databricks service principal"
+  value       = databricks_service_principal.adf.id
+}
+
+output "adf_databricks_application_id" {
+  description = "ADF Managed Identity Application ID in Databricks"
+  value       = databricks_service_principal.adf.application_id
+}
+
+output "databricks_workspace_resource_id_for_linked_service" {
+  description = "Databricks workspace resource ID - USE THIS when creating ADF Databricks Linked Service (also stored in Key Vault)"
+  value       = azurerm_databricks_workspace.main.id
+}
+
+# ============================================================================
+# ADF Managed Identity for Databricks Bundle
+# ============================================================================
+
+output "adf_managed_identity_application_id" {
+  description = "ADF Managed Identity Application ID - USE THIS for Databricks bundle permissions"
+  value       = azurerm_data_factory.main.identity[0].principal_id
+}
+
+# ============================================================================
 # Summary Output
 # ============================================================================
 
 output "deployment_summary" {
   description = "Summary of all deployed resources"
   value = {
-    resource_group        = azurerm_resource_group.main.name
-    location              = azurerm_resource_group.main.location
-    data_factory          = azurerm_data_factory.main.name
-    storage_account       = azurerm_storage_account.adls.name
-    containers            = [for container in azurerm_storage_data_lake_gen2_filesystem.containers : container.name]
-    azure_table           = azurerm_storage_table.metadata.name
-    databricks_workspace  = azurerm_databricks_workspace.main.name
-    access_connector      = azurerm_databricks_access_connector.main.name
-    storage_credential    = databricks_storage_credential.spotify_adls.name
-    external_locations    = [for location in databricks_external_location.layers : location.name]
-    unity_catalog         = databricks_catalog.spotify.name
-    unity_catalog_schemas = [for schema in databricks_schema.layers : schema.name]
-    sql_server            = azurerm_mssql_server.main.name
-    sql_database          = azurerm_mssql_database.main.name
-    key_vault             = azurerm_key_vault.main.name
-    logic_app             = azurerm_logic_app_workflow.metadata_handler.name
-    api_connection        = azurerm_api_connection.azuretables.name
+    resource_group               = azurerm_resource_group.main.name
+    location                     = azurerm_resource_group.main.location
+    data_factory                 = azurerm_data_factory.main.name
+    storage_account              = azurerm_storage_account.adls.name
+    containers                   = [for container in azurerm_storage_data_lake_gen2_filesystem.containers : container.name]
+    azure_table                  = azurerm_storage_table.metadata.name
+    databricks_workspace         = azurerm_databricks_workspace.main.name
+    access_connector             = azurerm_databricks_access_connector.main.name
+    storage_credential           = databricks_storage_credential.spotify_adls.name
+    external_locations           = [for location in databricks_external_location.layers : location.name]
+    unity_catalog                = databricks_catalog.spotify.name
+    unity_catalog_schemas        = [for schema in databricks_schema.layers : schema.name]
+    sql_server                   = azurerm_mssql_server.main.name
+    sql_database                 = azurerm_mssql_database.main.name
+    key_vault                    = azurerm_key_vault.main.name
+    logic_app                    = azurerm_logic_app_workflow.metadata_handler.name
+    api_connection               = azurerm_api_connection.azuretables.name
+    adf_databricks_service_principal = databricks_service_principal.adf.display_name
   }
 }

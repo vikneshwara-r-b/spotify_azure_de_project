@@ -394,6 +394,46 @@
 						"type": "Expression"
 					}
 				}
+			},
+			{
+				"name": "Invoke databricks workflow job",
+				"type": "DatabricksJob",
+				"dependsOn": [
+					{
+						"activity": "Loop Each Table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"jobId": {
+						"value": "@pipeline().globalParameters.databricks_workflow_job_id",
+						"type": "Expression"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ls_azure_databricks_connection",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"databricks_workspace_url": {
+							"value": "@string(json(variables('secrets_map'))['databricks-workspace-url'])",
+							"type": "Expression"
+						},
+						"databricks_workspace_resource_id": {
+							"value": "@string(json(variables('secrets_map'))['databricks-workspace-resource-id'])",
+							"type": "Expression"
+						}
+					}
+				}
 			}
 		],
 		"parameters": {
@@ -434,7 +474,9 @@
 					"adls-storage-account-name",
 					"azure-table-interaction-endpoint",
 					"sql-admin-username",
-					"sql-source-server-name"
+					"sql-source-server-name",
+					"databricks-workspace-url",
+					"databricks-workspace-resource-id"
 				]
 			}
 		},
