@@ -29,6 +29,9 @@ targets:
     # Note: workspace host is read from DATABRICKS_HOST environment variable
     mode: development
     default: true
+    permissions:
+      - service_principal_name: "677878f6-17a1-41ad-b8bd-aef1efa9f1dd"
+        level: CAN_MANAGE
 
   prod:
     # workspace host is read from DATABRICKS_HOST environment variable
