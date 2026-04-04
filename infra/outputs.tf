@@ -44,12 +44,9 @@ output "adf_studio_url" {
 }
 
 output "adf_global_parameters_values" {
-  description = "Values to use for ADF global parameters (must be created manually in ADF Studio)"
+  description = "Value to use for ADF global parameter (must be created manually in ADF Studio). All other values are stored in Key Vault."
   value = {
-    adls_source_url          = azurerm_storage_account.adls.primary_dfs_endpoint
-    key_vault_url            = azurerm_key_vault.main.vault_uri
-    sql_source_server_name   = azurerm_mssql_server.main.fully_qualified_domain_name
-    sql_source_database_name = azurerm_mssql_database.main.name
+    key_vault_url = azurerm_key_vault.main.vault_uri
   }
 }
 
@@ -187,10 +184,89 @@ output "key_vault_uri" {
 output "key_vault_secrets" {
   description = "List of secrets stored in Key Vault"
   value = {
-    adls_storage_account_key  = azurerm_key_vault_secret.adls_storage_account_key.name
-    adls_storage_account_name = azurerm_key_vault_secret.adls_storage_account_name.name
-    sql_admin_password        = azurerm_key_vault_secret.sql_admin_password.name
-    sql_admin_username        = azurerm_key_vault_secret.sql_admin_username.name
+    adls_storage_account_key         = azurerm_key_vault_secret.adls_storage_account_key.name
+    adls_storage_account_name        = azurerm_key_vault_secret.adls_storage_account_name.name
+    adls_source_url                  = azurerm_key_vault_secret.adls_source_url.name
+    sql_admin_password               = azurerm_key_vault_secret.sql_admin_password.name
+    sql_admin_username               = azurerm_key_vault_secret.sql_admin_username.name
+    sql_source_server_name           = azurerm_key_vault_secret.sql_source_server_name.name
+    azure_table_interaction_endpoint = azurerm_key_vault_secret.logic_app_trigger_url.name
+  }
+}
+
+# ============================================================================
+# Azure Table Storage & Logic App
+# ============================================================================
+
+output "azure_table_name" {
+  description = "Name of the Azure Table for metadata"
+  value       = azurerm_storage_table.metadata.name
+}
+
+output "logic_app_name" {
+  description = "Name of the Logic App"
+  value       = azurerm_logic_app_workflow.metadata_handler.name
+}
+
+output "logic_app_id" {
+  description = "ID of the Logic App"
+  value       = azurerm_logic_app_workflow.metadata_handler.id
+}
+
+output "logic_app_trigger_url" {
+  description = "Logic App HTTP trigger URL - USE THIS FOR ADF GLOBAL PARAMETER 'azure_table_interaction_endpoint'"
+  value       = azurerm_logic_app_trigger_http_request.main.callback_url
+  sensitive   = true
+}
+
+output "logic_app_access_endpoint" {
+  description = "Logic App access endpoint"
+  value       = "https://prod-82.eastus.logic.azure.com:443/workflows/${azurerm_logic_app_workflow.metadata_handler.name}"
+}
+
+output "api_connection_name" {
+  description = "Name of the Azure Tables API connection"
+  value       = azurerm_api_connection.azuretables.name
+}
+
+# ============================================================================
+# Databricks Unity Catalog
+# ============================================================================
+
+output "storage_credential_name" {
+  description = "Name of the Unity Catalog storage credential"
+  value       = databricks_storage_credential.spotify_adls.name
+}
+
+output "storage_credential_id" {
+  description = "ID of the Unity Catalog storage credential"
+  value       = databricks_storage_credential.spotify_adls.id
+}
+
+output "external_locations" {
+  description = "All Unity Catalog external locations"
+  value = {
+    for key, location in databricks_external_location.layers : key => {
+      name = location.name
+      url  = location.url
+    }
+  }
+}
+
+output "unity_catalog_name" {
+  description = "Name of the Unity Catalog"
+  value       = databricks_catalog.spotify.name
+}
+
+output "unity_catalog_id" {
+  description = "ID of the Unity Catalog"
+  value       = databricks_catalog.spotify.id
+}
+
+output "unity_catalog_schemas" {
+  description = "Unity Catalog schemas"
+  value = {
+    for key, schema in databricks_schema.layers : key => schema.name
   }
 }
 
@@ -201,15 +277,22 @@ output "key_vault_secrets" {
 output "deployment_summary" {
   description = "Summary of all deployed resources"
   value = {
-    resource_group       = azurerm_resource_group.main.name
-    location             = azurerm_resource_group.main.location
-    data_factory         = azurerm_data_factory.main.name
-    storage_account      = azurerm_storage_account.adls.name
-    containers           = [for container in azurerm_storage_data_lake_gen2_filesystem.containers : container.name]
-    databricks_workspace = azurerm_databricks_workspace.main.name
-    access_connector     = azurerm_databricks_access_connector.main.name
-    sql_server           = azurerm_mssql_server.main.name
-    sql_database         = azurerm_mssql_database.main.name
-    key_vault            = azurerm_key_vault.main.name
+    resource_group        = azurerm_resource_group.main.name
+    location              = azurerm_resource_group.main.location
+    data_factory          = azurerm_data_factory.main.name
+    storage_account       = azurerm_storage_account.adls.name
+    containers            = [for container in azurerm_storage_data_lake_gen2_filesystem.containers : container.name]
+    azure_table           = azurerm_storage_table.metadata.name
+    databricks_workspace  = azurerm_databricks_workspace.main.name
+    access_connector      = azurerm_databricks_access_connector.main.name
+    storage_credential    = databricks_storage_credential.spotify_adls.name
+    external_locations    = [for location in databricks_external_location.layers : location.name]
+    unity_catalog         = databricks_catalog.spotify.name
+    unity_catalog_schemas = [for schema in databricks_schema.layers : schema.name]
+    sql_server            = azurerm_mssql_server.main.name
+    sql_database          = azurerm_mssql_database.main.name
+    key_vault             = azurerm_key_vault.main.name
+    logic_app             = azurerm_logic_app_workflow.metadata_handler.name
+    api_connection        = azurerm_api_connection.azuretables.name
   }
 }

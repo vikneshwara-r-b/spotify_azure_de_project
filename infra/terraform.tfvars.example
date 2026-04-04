@@ -98,6 +98,41 @@ key_vault_name = "kv-spotify"
 key_vault_sku  = "standard"  # Options: standard, premium
 
 # ============================================================================
+# Azure Table Storage (for Metadata)
+# ============================================================================
+
+# Azure Table name for metadata storage
+azure_table_name = "ingestionmetadatastore"
+
+# ============================================================================
+# Azure Logic App
+# ============================================================================
+
+# Final name will be: logicappspotifyde-20260316
+logic_app_name = "logicappspotifyde"
+
+# API Connection name for Azure Tables
+logic_app_connection_name = "azuretablesconnection"
+
+# ============================================================================
+# Databricks Unity Catalog
+# ============================================================================
+
+# Storage credential name
+unity_catalog_storage_credential_name = "spotify_adls_credential"
+
+# External location names
+unity_catalog_external_location_bronze = "spotify_bronze"
+unity_catalog_external_location_silver = "spotify_silver"
+unity_catalog_external_location_gold   = "spotify_gold"
+
+# Catalog and schema names
+unity_catalog_name         = "spotify_catalog"
+unity_catalog_schema_bronze = "bronze"
+unity_catalog_schema_silver = "silver"
+unity_catalog_schema_gold   = "gold"
+
+# ============================================================================
 # Tags
 # ============================================================================
 

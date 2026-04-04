@@ -1,0 +1,77 @@
+# Spotify ETL Workflow Job
+# This job orchestrates the Bronze -> Silver -> Gold data pipeline
+resources:
+  jobs:
+    spotify_etl_job:
+      name: spotify_etl_workflow
+      
+      # Daily execution schedule
+      trigger:
+        periodic:
+          interval: 1
+          unit: DAYS
+      
+      # Uncomment to enable email notifications
+      # email_notifications:
+      #   on_failure:
+      #     - your_email@example.com
+      
+      tasks:
+        # ========================================================================
+        # TASK 1: Silver Layer Transformation (Bronze -> Silver)
+        # ========================================================================
+        # Processes all dimension and fact tables from Bronze to Silver layer
+        # Uses Databricks Autoloader for incremental data ingestion
+        # Implements CDC with hash_diff for change detection
+        - task_key: silver_transformation_task
+          notebook_task:
+            notebook_path: ../src/silver_dimensions.ipynb
+            base_parameters:
+              catalog_name: "spotify_catalog"
+              adls_storage_container_name: ${var.adls_storage_container_name}
+        
+        # ========================================================================
+        # TASK 2: Gold Layer Transformations (Silver -> Gold) - For Each Loop
+        # ========================================================================
+        # Creates SCD Type 2 dimension tables and slowly changing fact tables
+        # Processes multiple tables in parallel using for_each_task
+        # Each iteration creates surrogate keys and tracks historical changes
+        - task_key: gold_transformation_tasks
+          depends_on:
+            - task_key: silver_transformation_task
+          for_each_task:
+            inputs: |
+              [
+                {
+                  "source_table": "dimuser",
+                  "target_table": "dimuser",
+                  "pk_list": "user_id"
+                },
+                {
+                  "source_table": "dimartist",
+                  "target_table": "dimartist",
+                  "pk_list": "artist_id"
+                },
+                {
+                  "source_table": "dimtrack",
+                  "target_table": "dimtrack",
+                  "pk_list": "track_id"
+                },
+                {
+                  "source_table": "factstream",
+                  "target_table": "factstream",
+                  "pk_list": "stream_id"
+                }
+              ]
+            task:
+              task_key: process_gold_table
+              notebook_task:
+                notebook_path: ../src/gold_dimensions.ipynb
+                base_parameters:
+                  catalog_name: "spotify_catalog"
+                  adls_storage_container_name: ${var.adls_storage_container_name}
+                  source_schema_name: "silver"
+                  source_table_name: "{{input.source_table}}"
+                  pk_list: "{{input.pk_list}}"
+                  target_schema_name: "gold"
+                  target_table_name: "{{input.target_table}}"

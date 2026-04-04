@@ -1,0 +1,40 @@
+# This is a Databricks asset bundle definition for spotify_dab.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: spotify_dab
+  uuid: 22a068ba-5021-46f4-8a26-b16bcf60307b
+
+# Variables - Set via environment variables before deployment
+# Required: export DATABRICKS_HOST="https://your-workspace.azuredatabricks.net"
+# Optional: export USER_EMAIL="your-email@domain.com"
+variables:
+  user_email:
+    description: "User email for permissions"
+    default: ${env.USER_EMAIL}
+  
+  adls_storage_container_name:
+    description: "ADLS Gen2 storage container name"
+    default: ${env.ADLS_STORAGE_CONTAINER_NAME}
+
+include:
+  - resources/*.yml
+  - resources/*/*.yml
+
+targets:
+  dev:
+    # The default target uses 'mode: development' to create a development copy.
+    # - Deployed resources get prefixed with '[dev my_user_name]'
+    # - Any job schedules and triggers are paused by default.
+    # See also https://docs.databricks.com/dev-tools/bundles/deployment-modes.html.
+    # Note: workspace host is read from DATABRICKS_HOST environment variable
+    mode: development
+    default: true
+
+  prod:
+    # workspace host is read from DATABRICKS_HOST environment variable
+    mode: production
+    workspace:
+      root_path: /Workspace/PROD/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: ${var.user_email}
+        level: CAN_MANAGE

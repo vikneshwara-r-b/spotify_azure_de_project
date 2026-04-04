@@ -327,6 +327,46 @@ resource "azurerm_key_vault_secret" "sql_admin_username" {
   ]
 }
 
+# Store Logic App trigger URL (for Azure Table interaction)
+resource "azurerm_key_vault_secret" "logic_app_trigger_url" {
+  name         = "azure-table-interaction-endpoint"
+  value        = azurerm_logic_app_trigger_http_request.main.callback_url
+  key_vault_id = azurerm_key_vault.main.id
+
+  depends_on = [
+    azurerm_role_assignment.user_keyvault_administrator,
+    azurerm_logic_app_trigger_http_request.main
+  ]
+}
+
+# ============================================================================
+# Key Vault Secrets - Additional Configuration Values
+# ============================================================================
+
+# Store ADLS Source URL (DFS endpoint)
+resource "azurerm_key_vault_secret" "adls_source_url" {
+  name         = "adls-source-url"
+  value        = azurerm_storage_account.adls.primary_dfs_endpoint
+  key_vault_id = azurerm_key_vault.main.id
+
+  depends_on = [
+    azurerm_role_assignment.user_keyvault_administrator,
+    azurerm_storage_account.adls
+  ]
+}
+
+# Store SQL Server FQDN
+resource "azurerm_key_vault_secret" "sql_source_server_name" {
+  name         = "sql-source-server-name"
+  value        = azurerm_mssql_server.main.fully_qualified_domain_name
+  key_vault_id = azurerm_key_vault.main.id
+
+  depends_on = [
+    azurerm_role_assignment.user_keyvault_administrator,
+    azurerm_mssql_server.main
+  ]
+}
+
 # ============================================================================
 # Azure Data Factory - Global Parameters
 # ============================================================================
@@ -334,25 +374,273 @@ resource "azurerm_key_vault_secret" "sql_admin_username" {
 # NOTE: The AzureRM provider does not currently support creating ADF global parameters via Terraform.
 # Global parameters must be created manually in ADF Studio after deployment.
 #
-# To create global parameters in ADF Studio:
+# To create global parameter in ADF Studio:
 # 1. Open ADF Studio (use the URL from terraform outputs: adf_studio_url)
 # 2. Go to Manage → Global parameters
-# 3. Click "+ New" and add the following parameters:
-#
-# Parameter: adls_source_url
-#   Type: String
-#   Value: (see output: storage_account_primary_dfs_endpoint)
+# 3. Click "+ New" and add this parameter:
 #
 # Parameter: key_vault_url
 #   Type: String
 #   Value: (see output: key_vault_uri)
 #
-# Parameter: sql_source_server_name
-#   Type: String
-#   Value: (see output: sql_server_fqdn)
+# All other configuration values are stored in Key Vault secrets:
+# - adls-source-url (ADLS DFS endpoint)
+# - sql-source-server-name (SQL Server FQDN)
+# - sql-admin-username (SQL username)
+# - sql-admin-password (SQL password)
+# - adls-storage-account-key (ADLS access key)
+# - adls-storage-account-name (ADLS account name)
+# - azure-table-interaction-endpoint (Logic App trigger URL)
 #
-# Parameter: sql_source_database_name
-#   Type: String
-#   Value: (see output: sql_database_name)
-#
-# The values will be available in terraform outputs after deployment.
+# Access these from ADF pipelines using Key Vault Linked Service.
+# Example: @linkedService().secretName or use Web Activity with Key Vault integration
+
+# ============================================================================
+# Azure Table Storage (for Metadata)
+# ============================================================================
+
+resource "azurerm_storage_table" "metadata" {
+  name                 = var.azure_table_name
+  storage_account_name = azurerm_storage_account.adls.name
+
+  depends_on = [azurerm_storage_account.adls]
+}
+
+# ============================================================================
+# Azure Logic App - API Connection for Azure Tables
+# ============================================================================
+
+resource "azurerm_api_connection" "azuretables" {
+  name                = var.logic_app_connection_name
+  resource_group_name = azurerm_resource_group.main.name
+  managed_api_id      = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Web/locations/${var.location}/managedApis/azuretables"
+  display_name        = "sample_connection"
+
+  parameter_values = {
+    storageaccount = azurerm_storage_account.adls.name
+    sharedkey      = azurerm_storage_account.adls.primary_access_key
+  }
+
+  tags = var.tags
+
+  depends_on = [azurerm_storage_account.adls]
+}
+
+# ============================================================================
+# Azure Logic App Workflow
+# ============================================================================
+
+resource "azurerm_logic_app_workflow" "metadata_handler" {
+  name                = "${var.logic_app_name}-${var.resource_suffix}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+
+  workflow_parameters = {
+    "$connections" = jsonencode({
+      defaultValue = {}
+      type         = "Object"
+    })
+  }
+
+  parameters = {
+    "$connections" = jsonencode({
+      azuretables = {
+        connectionId         = azurerm_api_connection.azuretables.id
+        connectionName       = azurerm_api_connection.azuretables.name
+        connectionProperties = {}
+        id                   = azurerm_api_connection.azuretables.managed_api_id
+      }
+    })
+  }
+
+  tags = var.tags
+
+  depends_on = [azurerm_api_connection.azuretables]
+}
+
+# Logic App Trigger - HTTP Request
+resource "azurerm_logic_app_trigger_http_request" "main" {
+  name         = "When_an_HTTP_request_is_received"
+  logic_app_id = azurerm_logic_app_workflow.metadata_handler.id
+
+  schema = <<SCHEMA
+{
+  "type": "object",
+  "properties": {
+    "PartitionKey": {
+      "type": "string"
+    },
+    "RowKey": {
+      "type": "string"
+    },
+    "OperationType": {
+      "type": "string"
+    },
+    "LastWatermarkValue": {
+      "type": "string"
+    }
+  }
+}
+SCHEMA
+
+  method = "POST"
+}
+
+# Logic App Action - Condition (Fetch or Merge)
+resource "azurerm_logic_app_action_custom" "condition" {
+  name         = "Condition"
+  logic_app_id = azurerm_logic_app_workflow.metadata_handler.id
+
+  body = jsonencode({
+    type = "If"
+    expression = {
+      and = [{
+        equals = [
+          "@triggerBody()?['OperationType']",
+          "fetch"
+        ]
+      }]
+    }
+    actions = {
+      Fetch_row = {
+        type = "ApiConnection"
+        inputs = {
+          host = {
+            connection = {
+              name = "@parameters('$connections')['azuretables']['connectionId']"
+            }
+          }
+          method = "get"
+          path   = "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/tables/@{encodeURIComponent('${var.azure_table_name}')}/entities(PartitionKey='@{encodeURIComponent(triggerBody()?['PartitionKey'])}',RowKey='@{encodeURIComponent(triggerBody()?['RowKey'])}')"
+        }
+      }
+      Table_Fetch_Response = {
+        type = "Response"
+        kind = "Http"
+        inputs = {
+          statusCode = 200
+          body = {
+            PartitionKey = "@{body('Fetch_row')?['PartitionKey']}"
+            RowKey       = "@{body('Fetch_row')?['RowKey']}"
+            Entity       = "@body('Fetch_row')"
+            message      = "Fetched row from @{triggerBody()?['PartitionKey']} and @{triggerBody()?['RowKey']}"
+          }
+        }
+        runAfter = {
+          Fetch_row = ["Succeeded"]
+        }
+      }
+    }
+    else = {
+      actions = {
+        Merge_row = {
+          type = "ApiConnection"
+          inputs = {
+            host = {
+              connection = {
+                name = "@parameters('$connections')['azuretables']['connectionId']"
+              }
+            }
+            method = "patch"
+            path   = "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/tables/@{encodeURIComponent('${var.azure_table_name}')}/entities(PartitionKey='@{encodeURIComponent(triggerBody()?['PartitionKey'])}',RowKey='@{encodeURIComponent(triggerBody()?['RowKey'])}')"
+            body = {
+              LastWatermarkValue = "@{triggerBody()?['LastWatermarkValue']}"
+            }
+          }
+        }
+        Table_Merge_Response = {
+          type = "Response"
+          kind = "Http"
+          inputs = {
+            statusCode = 200
+            body = {
+              PartitionKey       = "@{triggerBody()?['PartitionKey']}"
+              RowKey             = "@{triggerBody()?['RowKey']}"
+              LastWatermarkValue = "@{triggerBody()?['LastWatermarkValue']}"
+              message            = "Value is inserted or updated"
+            }
+          }
+          runAfter = {
+            Merge_row = ["Succeeded"]
+          }
+        }
+      }
+    }
+  })
+
+  depends_on = [
+    azurerm_logic_app_trigger_http_request.main,
+    azurerm_logic_app_workflow.metadata_handler
+  ]
+}
+
+# ============================================================================
+# Databricks Unity Catalog - Storage Credential
+# ============================================================================
+
+resource "databricks_storage_credential" "spotify_adls" {
+  name    = var.unity_catalog_storage_credential_name
+  comment = "Storage credential for Spotify ADLS Gen2 using Access Connector managed identity"
+
+  azure_managed_identity {
+    access_connector_id = azurerm_databricks_access_connector.main.id
+  }
+
+  depends_on = [
+    azurerm_databricks_workspace.main,
+    azurerm_databricks_access_connector.main,
+    azurerm_role_assignment.access_connector_blob_contributor
+  ]
+}
+
+# ============================================================================
+# Databricks Unity Catalog - External Locations
+# ============================================================================
+
+# Create external locations dynamically for each container
+resource "databricks_external_location" "layers" {
+  for_each = toset(var.adls_containers)
+
+  name            = "spotify_${each.value}"
+  url             = "abfss://${each.value}@${azurerm_storage_account.adls.name}.dfs.core.windows.net/"
+  credential_name = databricks_storage_credential.spotify_adls.name
+  comment         = "${title(each.value)} layer for Spotify data"
+
+  depends_on = [
+    databricks_storage_credential.spotify_adls,
+    azurerm_storage_data_lake_gen2_filesystem.containers
+  ]
+}
+
+# ============================================================================
+# Databricks Unity Catalog - Catalog
+# ============================================================================
+
+resource "databricks_catalog" "spotify" {
+  name    = var.unity_catalog_name
+  comment = "Main catalog for Spotify data engineering project"
+
+  depends_on = [
+    databricks_storage_credential.spotify_adls,
+    databricks_external_location.layers
+  ]
+}
+
+# ============================================================================
+# Databricks Unity Catalog - Schemas
+# ============================================================================
+
+# Create schemas dynamically for each container (excluding bronze)
+resource "databricks_schema" "layers" {
+  for_each = toset([for container in var.adls_containers : container if container != "bronze"])
+
+  catalog_name = databricks_catalog.spotify.name
+  name         = each.value
+  comment      = "${title(each.value)} layer schema for Spotify data"
+  storage_root = "abfss://${each.value}@${azurerm_storage_account.adls.name}.dfs.core.windows.net/"
+
+  depends_on = [
+    databricks_catalog.spotify,
+    databricks_external_location.layers
+  ]
+}
