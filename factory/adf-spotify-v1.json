@@ -6,7 +6,7 @@
 				"type": "string",
 				"value": "https://kv-spotify-v1.vault.azure.net/"
 			},
-			"job_id": {
+			"databricks_workflow_job_id": {
 				"type": "string",
 				"value": "893430576998872"
 			}
