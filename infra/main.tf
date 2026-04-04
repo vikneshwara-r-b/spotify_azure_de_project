@@ -368,6 +368,34 @@ resource "azurerm_key_vault_secret" "sql_source_server_name" {
 }
 
 # ============================================================================
+# Key Vault Secrets - Databricks Connection Details
+# ============================================================================
+
+# Store Databricks workspace resource ID (for ADF linked service MSI auth)
+resource "azurerm_key_vault_secret" "databricks_workspace_resource_id" {
+  name         = "databricks-workspace-resource-id"
+  value        = azurerm_databricks_workspace.main.id
+  key_vault_id = azurerm_key_vault.main.id
+
+  depends_on = [
+    azurerm_role_assignment.user_keyvault_administrator,
+    azurerm_databricks_workspace.main
+  ]
+}
+
+# Store Databricks workspace URL
+resource "azurerm_key_vault_secret" "databricks_workspace_url" {
+  name         = "databricks-workspace-url"
+  value        = "https://${azurerm_databricks_workspace.main.workspace_url}"
+  key_vault_id = azurerm_key_vault.main.id
+
+  depends_on = [
+    azurerm_role_assignment.user_keyvault_administrator,
+    azurerm_databricks_workspace.main
+  ]
+}
+
+# ============================================================================
 # Azure Data Factory - Global Parameters
 # ============================================================================
 
@@ -642,5 +670,52 @@ resource "databricks_schema" "layers" {
   depends_on = [
     databricks_catalog.spotify,
     databricks_external_location.layers
+  ]
+}
+
+# ============================================================================
+# Databricks - Grant ADF Managed Identity Access for Job Execution
+# ============================================================================
+
+# Add ADF System-Assigned Managed Identity as Databricks service principal
+resource "databricks_service_principal" "adf" {
+  application_id = azurerm_data_factory.main.identity[0].principal_id
+  display_name   = "ADF-${azurerm_data_factory.main.name}"
+
+  depends_on = [
+    azurerm_databricks_workspace.main,
+    azurerm_data_factory.main
+  ]
+}
+
+# Grant workspace access and job execution permissions
+resource "databricks_entitlements" "adf_permissions" {
+  service_principal_id = databricks_service_principal.adf.id
+
+  # Core permissions for ADF to execute jobs
+  workspace_access           = true  # Can access workspace
+  databricks_sql_access      = false # Not needed for job execution
+  allow_cluster_create       = false # Jobs use existing/job clusters
+  allow_instance_pool_create = false # Not needed
+
+  depends_on = [databricks_service_principal.adf]
+}
+
+# ============================================================================
+# Azure RBAC - Grant ADF Managed Identity Contributor on Databricks Workspace
+# ============================================================================
+
+# This is REQUIRED for ADF to invoke Databricks jobs using Managed Identity authentication
+# The service principal registration (above) grants permissions INSIDE the workspace
+# This RBAC assignment grants permissions to call Azure Resource Management APIs
+resource "azurerm_role_assignment" "adf_databricks_contributor" {
+  scope                = azurerm_databricks_workspace.main.id
+  role_definition_name = "Contributor"
+  principal_id         = azurerm_data_factory.main.identity[0].principal_id
+
+  depends_on = [
+    azurerm_databricks_workspace.main,
+    azurerm_data_factory.main,
+    databricks_service_principal.adf
   ]
 }
