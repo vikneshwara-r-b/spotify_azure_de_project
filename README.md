@@ -252,37 +252,145 @@ flowchart TB
 
 ## 🚀 Quick Start
 
-### **5-Step Setup**
+### **Initial Setup (7 Steps)**
 
+#### **Step 1: Deploy Azure Infrastructure**
 ```bash
-# Step 1: Deploy Azure Infrastructure (5-10 minutes)
 cd infra
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your values
+# Edit terraform.tfvars: Update resource_suffix and sql_admin_password
 terraform init
 terraform apply
+```
+⏱️ Duration: ~5-10 minutes
 
-# Step 2: Initialize Source Database
-# Use Azure Portal or SQL client to execute:
-# - sql_scripts/ddl_script.sql
-# - sql_scripts/initial_load.sql
+---
 
-# Step 3: Seed Metadata Store (One-time)
-# In ADF Studio: Run pipeline pl_seed_ingestion_metadata
+#### **Step 2: Configure ADF Global Parameter (Key Vault URL)**
 
-# Step 4: Deploy Databricks Asset Bundle
-cd ../databricks/spotify_dab
-export DATABRICKS_HOST="https://$(cd ../../infra && terraform output -raw databricks_workspace_url)"
-export ADLS_STORAGE_CONTAINER_NAME=$(cd ../../infra && terraform output -raw storage_account_name)
-export ADF_SERVICE_PRINCIPAL_ID=$(cd ../../infra && terraform output -raw adf_managed_identity_application_id)
-databricks bundle deploy --target dev
+**In ADF Studio**:
+1. Get Key Vault URL: `cd infra && terraform output key_vault_uri`
+2. Open ADF Studio: `terraform output adf_studio_url`
+3. Navigate to: **Manage** → **Global Parameters** → **+ New**
+4. Add parameter:
+   - **Name**: `key_vault_url`
+   - **Type**: `String`
+   - **Value**: `<paste_key_vault_uri_from_step_1>`
+5. Click **Save All**
 
-# Step 5: Run the Pipeline
-# In ADF Studio: Trigger pl_spotify_data_ingestion
-# Or use Databricks: databricks bundle run spotify_etl_job --target dev
+---
+
+#### **Step 3: Initialize Source SQL Database**
+
+**⚠️ CRITICAL**: This must be completed before running any pipelines!
+
+1. Get SQL Server connection:
+   ```bash
+   terraform output sql_server_fqdn      # Server name
+   terraform output sql_database_name    # Database: spotifydb
+   ```
+
+2. Connect using Azure Portal Query Editor, SSMS, or Azure Data Studio
+
+3. Execute SQL scripts **in order**:
+   - `sql_scripts/ddl_script.sql` - Creates tables (star schema)
+   - `sql_scripts/initial_load.sql` - Loads sample data (500 users, 500 artists, 1000 tracks)
+
+4. Verify: `SELECT COUNT(*) FROM dbo.DimUser;` (Should return 500)
+
+---
+
+#### **Step 4: Clone Repository in Databricks Workspace**
+
+1. Open Databricks workspace: `terraform output databricks_workspace_url`
+2. Navigate to: **Repos** → **Add Repo**
+3. Configure:
+   - **Git repository URL**: `https://github.com/vikneshwara-r-b/spotify_azure_de_project.git`
+   - **Git provider**: GitHub
+   - **Repository name**: `spotify_azure_de_project`
+4. Click **Create Repo**
+
+---
+
+#### **Step 5: Deploy Databricks Asset Bundle**
+
+**From Databricks Workspace** (recommended):
+
+1. In cloned repo, open a notebook or terminal
+2. Navigate to: `databricks/spotify_dab/`
+3. Run deployment commands:
+   ```bash
+   databricks bundle deploy --target dev \
+     --var="adls_storage_container_name=$(cd ../../infra && terraform output -raw storage_account_name)" \
+     --var="adf_service_principal_id=$(cd ../../infra && terraform output -raw adf_managed_identity_application_id)"
+   ```
+
+4. **📝 IMPORTANT**: Note the **Job ID** from deployment output (needed for Step 6)
+
+---
+
+#### **Step 6: Update ADF Global Parameter (Databricks Job ID)**
+
+**In ADF Studio**:
+1. Navigate to: **Manage** → **Global Parameters**
+2. Click **+ New** (or edit if exists)
+3. Add parameter:
+   - **Name**: `databricks_workflow_job_id`
+   - **Type**: `String`
+   - **Value**: `<job_id_from_step_5>`
+4. Click **Save All**
+
+---
+
+#### **Step 7: Seed Metadata Store (One-Time)**
+
+**In ADF Studio**:
+1. Navigate to: **Author** → **Pipelines** → `pl_seed_ingestion_metadata`
+2. Click **Add Trigger** → **Trigger Now**
+3. Accept default parameters
+4. Click **OK**
+5. Monitor: **Monitor** tab (should complete in <1 minute)
+
+**What this does**: Initializes watermarks in Azure Table Storage for incremental loading
+
+---
+
+### **Running the Pipeline**
+
+#### **Initial Data Load**:
+```bash
+# In ADF Studio
+# 1. Navigate to: Author → Pipelines → pl_spotify_data_ingestion
+# 2. Click "Add Trigger" → "Trigger Now"
+# 3. Monitor execution (completes in ~6-7 minutes)
+
+# This will:
+# ✅ Extract all 500 users, 500 artists from SQL
+# ✅ Load Bronze layer (Parquet files)
+# ✅ Transform to Silver layer (CDC)
+# ✅ Create Gold layer (SCD Type 2 tables)
 ```
 
-📖 **Detailed guides**: See [infra/README.md](infra/README.md) and [databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)
+#### **Testing Incremental Changes**:
+```bash
+# 1. Simulate data changes in SQL Database
+#    Execute: sql_scripts/incremental_load.sql
+#    (Updates 60 records, inserts 35 new records)
+
+# 2. Re-trigger: pl_spotify_data_ingestion
+#    (Will detect only changed records via watermarks)
+
+# 3. Verify SCD Type 2 history:
+#    Query Gold layer to see historical versions
+```
+
+---
+
+📖 **Detailed guides**: 
+- Infrastructure: [infra/README.md](infra/README.md)
+- Databricks Deployment: [databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)
+- SQL Scripts: [sql_scripts/README.md](sql_scripts/README.md)
+- Pipelines: [pipeline/README.md](pipeline/README.md)
 
 ---
 
