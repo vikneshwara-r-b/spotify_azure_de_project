@@ -31,7 +31,7 @@ The Databricks layer handles all data processing and transformation logic using 
 │                    │──────►│                          │─────►│                  │
 │ 📂 DimUser/        │       │  silver_dimensions.ipynb │      │  Schema: silver  │
 │ 📂 DimArtist/      │       │                          │      │  • DimUser       │
-│ 📂 DimTrack/       │       │  • Autoloader Streaming  │      │  • DimArtist     │
+│ 📂 DimTrack/       │       │  • Autoloader (micro-batch) │   │  • DimArtist     │
 │ 📂 DimDate/        │       │  • CDC (hash_diff)       │      │  • DimTrack      │
 │ 📂 FactStream/     │       │  • Delta Merge           │      │  • DimDate       │
 │                    │       │  • Transformations       │      │  • FactStream    │

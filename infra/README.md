@@ -12,7 +12,6 @@ Complete Terraform infrastructure for deploying Azure data engineering resources
 - [Post-Deployment Configuration](#post-deployment-configuration)
 - [Outputs & Verification](#outputs--verification)
 - [Troubleshooting](#troubleshooting)
-- [Cost Estimation](#cost-estimation)
 - [Cleanup](#cleanup)
 
 ---
@@ -251,41 +250,42 @@ terraform output databricks_workspace_url
 
 # Formatted summary
 terraform output deployment_summary
-
-# Unity Catalog setup guide
-terraform output unity_catalog_setup_guide
 ```
 
 ---
 
 ## 🔧 Post-Deployment Configuration
 
-### 1. Unity Catalog Setup
+### 1. Unity Catalog Verification
 
-After Terraform deployment, configure Unity Catalog in Databricks:
+**Unity Catalog is automatically configured by Terraform** and ready to use immediately after deployment.
 
+**What Terraform Creates**:
+- ✅ Storage Credential (`spotify_adls_credential`) using Access Connector MI
+- ✅ External Locations (`spotify_bronze`, `spotify_silver`, `spotify_gold`)
+- ✅ Unity Catalog (`spotify_catalog`)
+- ✅ Schemas (`silver`, `gold`)
+
+**Verify Deployment**:
 ```bash
-# View the detailed setup guide
-terraform output unity_catalog_setup_guide
+# Check Unity Catalog resources created
+terraform output unity_catalog_name           # spotify_catalog
+terraform output storage_credential_name      # spotify_adls_credential
+terraform output external_locations           # bronze, silver, gold
+terraform output unity_catalog_schemas        # silver, gold
 ```
 
-**Key Steps:**
-1. Create Unity Catalog Metastore (Databricks Account Console)
-2. Create Storage Credential using Access Connector
-3. Create External Locations for bronze, silver, gold
-4. Create Catalogs and Schemas
-
-**Required Information (from outputs):**
-```bash
-# Access Connector Principal ID (for storage credential)
-terraform output access_connector_principal_id
-
-# Access Connector ID
-terraform output access_connector_id
-
-# ADLS endpoint
-terraform output storage_account_primary_dfs_endpoint
+**Verify in Databricks Workspace**:
 ```
+1. Open Databricks workspace
+2. Navigate to: Catalog → spotify_catalog
+3. Should see:
+   ✅ Schemas: silver, gold
+   ✅ External locations configured
+   ✅ Storage credential using Access Connector
+```
+
+**Note**: Unity Catalog metastore must exist in your Databricks account (workspace-level). This is a Databricks account admin task, done once per region.
 
 ### 2. Databricks Asset Bundles Configuration
 
@@ -489,31 +489,6 @@ terraform refresh
 
 ---
 
-## 💰 Cost Estimation
-
-### Monthly Cost Estimate (US East)
-
-| Resource | SKU | Estimated Monthly Cost |
-|----------|-----|------------------------|
-| Azure Databricks | Premium | ~$100-500 (depends on usage) |
-| ADLS Gen2 | Standard LRS | ~$5-20 (depends on storage) |
-| Azure SQL Database | Basic | ~$5 |
-| Azure Data Factory | Pay-per-use | ~$10-50 (depends on pipelines) |
-| Key Vault | Standard | ~$1 |
-| Access Connector | Free | $0 |
-| **Total** | | **~$120-575/month** |
-
-> **Note:** Costs vary based on usage. Databricks is the most significant cost component.
-
-### Cost Optimization Tips
-
-1. **Databricks:** Use cluster autoscaling, set auto-termination
-2. **ADLS:** Enable lifecycle management policies
-3. **SQL Database:** Use Basic tier for dev/test, scale up for production
-4. **ADF:** Minimize pipeline runs, use triggers efficiently
-
----
-
 ## 🧹 Cleanup
 
 ### Destroy All Resources
@@ -565,7 +540,7 @@ az group delete --name rg-spotify-dataeng --yes --no-wait
 For issues with:
 - **Terraform configuration:** Check [variables.tf](./variables.tf) and [main.tf](./main.tf)
 - **Azure resources:** Review [Azure Status](https://status.azure.com)
-- **Unity Catalog:** See `terraform output unity_catalog_setup_guide`
+- **Unity Catalog:** Verify with `terraform output unity_catalog_name` and check Databricks workspace UI
 
 ---
 

@@ -1,6 +1,6 @@
 # 🎵 Spotify Azure Data Engineering Project
 
-A production-grade **Medallion Architecture** ETL pipeline built on Azure, demonstrating modern data engineering practices with synthetic Spotify streaming data.
+A production-grade **Medallion Architecture** batch ETL pipeline built on Azure, demonstrating modern data engineering practices with synthetic Spotify data.
 
 [![Azure](https://img.shields.io/badge/Azure-0078D4?style=flat&logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/)
 [![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=flat&logo=databricks&logoColor=white)](https://databricks.com/)
@@ -25,17 +25,20 @@ A production-grade **Medallion Architecture** ETL pipeline built on Azure, demon
 
 ## 🎯 Overview
 
-This project implements an **end-to-end data engineering solution** for analyzing fictional Spotify streaming data using Azure cloud services. It showcases:
+This project implements an **end-to-end batch data engineering solution** for analyzing fictional Spotify data using Azure cloud services. It showcases:
 
 - **Medallion Architecture** (Bronze → Silver → Gold layers)
-- **Incremental Data Loading** with watermark-based CDC
+- **Scheduled Batch Processing** with watermark-based incremental loading
+- **Change Data Capture (CDC)** with hash-based change detection
 - **SCD Type 2** dimensional modeling
 - **Infrastructure as Code** with Terraform
 - **Databricks Asset Bundles** for workflow orchestration
-- **Azure Data Factory** for data ingestion
+- **Azure Data Factory** for data ingestion orchestration
 - **Unity Catalog** for data governance
 
-**Data Source**: Azure SQL Database with synthetic Spotify data (500 users, 500 artists, 1000 tracks, streaming facts)
+**Data Source**: Azure SQL Database with synthetic Spotify data (500 users, 500 artists, 1000 tracks, stream events)
+
+**Processing Pattern**: Scheduled batch pipeline (daily) using Spark Structured Streaming APIs in micro-batch mode (`trigger=availableNow`) for incremental processing with checkpoint management
 
 ---
 
@@ -81,13 +84,14 @@ This project implements an **end-to-end data engineering solution** for analyzin
                     │  📂 gold/    ← SCD Type 2 Analytics   │
                     └────────────────┬──────────────────────┘
                                      │
-                                     │ ③ Structured Streaming + CDC
+                                     │ ③ Micro-Batch Processing + CDC
                                      ▼
                     ┌──────────────────────────────────────┐
                     │   AZURE DATABRICKS WORKFLOW          │
+                    │   (Scheduled Batch - Daily)          │
                     │                                       │
                     │  🔹 Task 1: Silver Transformation     │
-                    │     • Autoloader (cloudFiles)         │
+                    │     • Autoloader (incremental)        │
                     │     • Hash-based CDC (hash_diff)      │
                     │     • Merge operations                │
                     │     • Bronze → Silver Delta Tables    │
@@ -248,37 +252,145 @@ flowchart TB
 
 ## 🚀 Quick Start
 
-### **5-Step Setup**
+### **Initial Setup (7 Steps)**
 
+#### **Step 1: Deploy Azure Infrastructure**
 ```bash
-# Step 1: Deploy Azure Infrastructure (5-10 minutes)
 cd infra
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your values
+# Edit terraform.tfvars: Update resource_suffix and sql_admin_password
 terraform init
 terraform apply
+```
+⏱️ Duration: ~5-10 minutes
 
-# Step 2: Initialize Source Database
-# Use Azure Portal or SQL client to execute:
-# - sql_scripts/ddl_script.sql
-# - sql_scripts/initial_load.sql
+---
 
-# Step 3: Seed Metadata Store (One-time)
-# In ADF Studio: Run pipeline pl_seed_ingestion_metadata
+#### **Step 2: Configure ADF Global Parameter (Key Vault URL)**
 
-# Step 4: Deploy Databricks Asset Bundle
-cd ../databricks/spotify_dab
-export DATABRICKS_HOST="https://$(cd ../../infra && terraform output -raw databricks_workspace_url)"
-export ADLS_STORAGE_CONTAINER_NAME=$(cd ../../infra && terraform output -raw storage_account_name)
-export ADF_SERVICE_PRINCIPAL_ID=$(cd ../../infra && terraform output -raw adf_managed_identity_application_id)
-databricks bundle deploy --target dev
+**In ADF Studio**:
+1. Get Key Vault URL: `cd infra && terraform output key_vault_uri`
+2. Open ADF Studio: `terraform output adf_studio_url`
+3. Navigate to: **Manage** → **Global Parameters** → **+ New**
+4. Add parameter:
+   - **Name**: `key_vault_url`
+   - **Type**: `String`
+   - **Value**: `<paste_key_vault_uri_from_step_1>`
+5. Click **Save All**
 
-# Step 5: Run the Pipeline
-# In ADF Studio: Trigger pl_spotify_data_ingestion
-# Or use Databricks: databricks bundle run spotify_etl_job --target dev
+---
+
+#### **Step 3: Initialize Source SQL Database**
+
+**⚠️ CRITICAL**: This must be completed before running any pipelines!
+
+1. Get SQL Server connection:
+   ```bash
+   terraform output sql_server_fqdn      # Server name
+   terraform output sql_database_name    # Database: spotifydb
+   ```
+
+2. Connect using Azure Portal Query Editor, SSMS, or Azure Data Studio
+
+3. Execute SQL scripts **in order**:
+   - `sql_scripts/ddl_script.sql` - Creates tables (star schema)
+   - `sql_scripts/initial_load.sql` - Loads sample data (500 users, 500 artists, 1000 tracks)
+
+4. Verify: `SELECT COUNT(*) FROM dbo.DimUser;` (Should return 500)
+
+---
+
+#### **Step 4: Clone Repository in Databricks Workspace**
+
+1. Open Databricks workspace: `terraform output databricks_workspace_url`
+2. Navigate to: **Repos** → **Add Repo**
+3. Configure:
+   - **Git repository URL**: `https://github.com/vikneshwara-r-b/spotify_azure_de_project.git`
+   - **Git provider**: GitHub
+   - **Repository name**: `spotify_azure_de_project`
+4. Click **Create Repo**
+
+---
+
+#### **Step 5: Deploy Databricks Asset Bundle**
+
+**From Databricks Workspace** (recommended):
+
+1. In cloned repo, open a notebook or terminal
+2. Navigate to: `databricks/spotify_dab/`
+3. Run deployment commands:
+   ```bash
+   databricks bundle deploy --target dev \
+     --var="adls_storage_container_name=$(cd ../../infra && terraform output -raw storage_account_name)" \
+     --var="adf_service_principal_id=$(cd ../../infra && terraform output -raw adf_managed_identity_application_id)"
+   ```
+
+4. **📝 IMPORTANT**: Note the **Job ID** from deployment output (needed for Step 6)
+
+---
+
+#### **Step 6: Update ADF Global Parameter (Databricks Job ID)**
+
+**In ADF Studio**:
+1. Navigate to: **Manage** → **Global Parameters**
+2. Click **+ New** (or edit if exists)
+3. Add parameter:
+   - **Name**: `databricks_workflow_job_id`
+   - **Type**: `String`
+   - **Value**: `<job_id_from_step_5>`
+4. Click **Save All**
+
+---
+
+#### **Step 7: Seed Metadata Store (One-Time)**
+
+**In ADF Studio**:
+1. Navigate to: **Author** → **Pipelines** → `pl_seed_ingestion_metadata`
+2. Click **Add Trigger** → **Trigger Now**
+3. Accept default parameters
+4. Click **OK**
+5. Monitor: **Monitor** tab (should complete in <1 minute)
+
+**What this does**: Initializes watermarks in Azure Table Storage for incremental loading
+
+---
+
+### **Running the Pipeline**
+
+#### **Initial Data Load**:
+```bash
+# In ADF Studio
+# 1. Navigate to: Author → Pipelines → pl_spotify_data_ingestion
+# 2. Click "Add Trigger" → "Trigger Now"
+# 3. Monitor execution (completes in ~6-7 minutes)
+
+# This will:
+# ✅ Extract all 500 users, 500 artists from SQL
+# ✅ Load Bronze layer (Parquet files)
+# ✅ Transform to Silver layer (CDC)
+# ✅ Create Gold layer (SCD Type 2 tables)
 ```
 
-📖 **Detailed guides**: See [infra/README.md](infra/README.md) and [databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)
+#### **Testing Incremental Changes**:
+```bash
+# 1. Simulate data changes in SQL Database
+#    Execute: sql_scripts/incremental_load.sql
+#    (Updates 60 records, inserts 35 new records)
+
+# 2. Re-trigger: pl_spotify_data_ingestion
+#    (Will detect only changed records via watermarks)
+
+# 3. Verify SCD Type 2 history:
+#    Query Gold layer to see historical versions
+```
+
+---
+
+📖 **Detailed guides**: 
+- Infrastructure: [infra/README.md](infra/README.md)
+- Databricks Deployment: [databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)
+- SQL Scripts: [sql_scripts/README.md](sql_scripts/README.md)
+- Pipelines: [pipeline/README.md](pipeline/README.md)
 
 ---
 
@@ -363,14 +475,15 @@ spotify_azure_de_project/
     └─ Updates watermark in Azure Table
     └─ Triggers Databricks workflow via MSI
 
-2️⃣  BRONZE → SILVER TRANSFORMATION (Databricks)
-    └─ Autoloader streams Parquet files from Bronze
+2️⃣  BRONZE → SILVER TRANSFORMATION (Databricks - Micro-Batch)
+    └─ Autoloader processes Parquet files incrementally from Bronze
     └─ Applies business transformations:
        • Convert names to uppercase
        • Calculate duration flags
        • Clean track names
     └─ Computes hash_diff for CDC
     └─ Merges into Silver Delta tables (upsert logic)
+    └─ Uses Spark Structured Streaming APIs with trigger=availableNow (micro-batch)
 
 3️⃣  SILVER → GOLD TRANSFORMATION (Databricks)
     └─ For-each-task processes tables in parallel:
@@ -527,22 +640,7 @@ ORDER BY active_start_date_time DESC;
 
 ---
 
-## 💰 Cost Estimate
-
-**Approximate Monthly Cost (US East)**:
-- Azure Databricks Premium: ~$100-500 (usage-based)
-- ADLS Gen2: ~$5-20 (storage-based)
-- Azure SQL Database (Basic): ~$5
-- Azure Data Factory: ~$10-50 (pipeline runs)
-- Key Vault: ~$1
-- Logic App: ~$1
-- **Total**: ~$120-575/month
-
-💡 **Cost Optimization**: Use Databricks autoscaling, ADLS lifecycle policies, and efficient pipeline scheduling.
-
----
-
-## 📖 Getting Help
+##  Getting Help
 
 1. **Documentation**: Start with [ARCHITECTURE.md](ARCHITECTURE.md) for system design
 2. **Deployment Issues**: Check [infra/README.md](infra/README.md) troubleshooting section
