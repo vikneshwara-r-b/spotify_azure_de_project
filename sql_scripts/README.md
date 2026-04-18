@@ -17,7 +17,7 @@ This directory contains SQL scripts for setting up and populating the Azure SQL 
 
 ## Overview
 
-The SQL scripts create a **star schema** data model with 4 dimension tables and 1 fact table, containing synthetic Spotify streaming data. This serves as the source system for the ETL pipeline.
+The SQL scripts create a **star schema** data model with 4 dimension tables and 1 fact table, containing synthetic Spotify data (including stream event facts). This serves as the source system for the batch ETL pipeline.
 
 **Database**: `spotifydb`  
 **Schema**: `dbo`  

@@ -19,19 +19,20 @@ Databricks Asset Bundle for the Spotify data engineering project, implementing S
 
 ## Overview
 
-This Databricks Asset Bundle orchestrates the **Bronze → Silver → Gold** data transformation pipeline for Spotify streaming analytics.
+This Databricks Asset Bundle orchestrates the **Bronze → Silver → Gold** data transformation pipeline for Spotify batch analytics.
 
 **Bundle Name**: `spotify_dab`  
 **UUID**: `22a068ba-5021-46f4-8a26-b16bcf60307b`
 
 ### **Key Features**
 
-- ✅ **Autoloader Streaming**: Incremental file ingestion from Bronze
+- ✅ **Autoloader (Micro-Batch)**: Incremental file ingestion from Bronze using Spark Structured Streaming APIs with `trigger=availableNow`
 - ✅ **Hash-Based CDC**: Change detection using SHA-256
 - ✅ **SCD Type 2**: Historical dimension tracking
 - ✅ **Parallel Processing**: For-each-task for Gold layer (4 tables)
 - ✅ **Serverless Compute**: Auto-scaling, pay-per-use
 - ✅ **Unity Catalog**: Governed data in spotify_catalog
+- ✅ **Scheduled Batch**: Daily workflow execution (not continuous)
 
 ---
 
