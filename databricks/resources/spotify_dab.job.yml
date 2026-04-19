@@ -4,13 +4,10 @@ resources:
   jobs:
     spotify_etl_job:
       name: spotify_etl_workflow
-      
-      # Daily execution schedule
-      trigger:
-        periodic:
-          interval: 1
-          unit: DAYS
-      
+
+      # Disable performance optimized mode - use STANDARD to reduce compute costs
+      performance_target: STANDARD
+
       # Uncomment to enable email notifications
       # email_notifications:
       #   on_failure:

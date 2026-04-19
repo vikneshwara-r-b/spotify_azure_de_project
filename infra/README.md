@@ -256,67 +256,55 @@ terraform output deployment_summary
 
 ## 🔧 Post-Deployment Configuration
 
-### 1. Unity Catalog Verification
+### 1. Unity Catalog Setup
 
-**Unity Catalog is automatically configured by Terraform** and ready to use immediately after deployment.
+**Terraform creates only the storage credential**. The catalog, schemas, and external locations are **managed by the Databricks Asset Bundle (DAB)** in `databricks/resources/base_resources_setup.yml`.
 
 **What Terraform Creates**:
 - ✅ Storage Credential (`spotify_adls_credential`) using Access Connector MI
-- ✅ External Locations (`spotify_bronze`, `spotify_silver`, `spotify_gold`)
-- ✅ Unity Catalog (`spotify_catalog`)
-- ✅ Schemas (`silver`, `gold`)
 
-**Verify Deployment**:
+**What DAB Creates** (on `databricks bundle deploy`):
+- ✅ External Locations (`spotify_ext_bronze`, `spotify_ext_silver`, `spotify_ext_gold`)
+- ✅ Unity Catalog (`spotify_catalog`)
+- ✅ Schemas (`bronze`, `silver`, `gold`)
+
+**Verify Storage Credential**:
 ```bash
-# Check Unity Catalog resources created
-terraform output unity_catalog_name           # spotify_catalog
 terraform output storage_credential_name      # spotify_adls_credential
-terraform output external_locations           # bronze, silver, gold
-terraform output unity_catalog_schemas        # silver, gold
 ```
 
-**Verify in Databricks Workspace**:
+**Verify after DAB deployment** in Databricks Workspace:
 ```
 1. Open Databricks workspace
 2. Navigate to: Catalog → spotify_catalog
 3. Should see:
-   ✅ Schemas: silver, gold
-   ✅ External locations configured
-   ✅ Storage credential using Access Connector
+   ✅ Schemas: bronze, silver, gold
+   ✅ External locations: spotify_ext_bronze, spotify_ext_silver, spotify_ext_gold
+   ✅ Storage credential: spotify_adls_credential (using Access Connector)
 ```
 
-**Note**: Unity Catalog metastore must exist in your Databricks account (workspace-level). This is a Databricks account admin task, done once per region.
+> **Note**: Unity Catalog metastore must exist in your Databricks account (workspace-level). This is a Databricks account admin task, done once per region. Deploy the DAB **after** running `terraform apply`.
 
-### 2. Databricks Asset Bundles Configuration
+### 2. Databricks Asset Bundle Deployment
 
-Use these values in your `databricks.yml`:
+After Terraform completes, deploy the bundle from the `databricks/` directory:
 
-```yaml
-workspace:
-  host: https://<databricks_workspace_url>
-
-resources:
-  storage_credentials:
-    spotify_adls_credential:
-      name: spotify_adls_credential
-      azure_managed_identity:
-        access_connector_id: <access_connector_id>
-  
-  external_locations:
-    bronze:
-      name: spotify_bronze
-      url: <storage_account_primary_dfs_endpoint>bronze
-      credential_name: spotify_adls_credential
-```
-
-Get values:
 ```bash
-terraform output -json | jq '{
-  workspace_url: .databricks_workspace_url.value,
-  access_connector_id: .access_connector_id.value,
-  storage_endpoint: .storage_account_primary_dfs_endpoint.value
-}'
+cd ../databricks
+
+# Get storage account name from Terraform output
+STORAGE=$(cd ../infra && terraform output -raw storage_account_name)
+
+# Deploy the bundle (creates catalog, schemas, external locations, job)
+DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
+  --var="adls_storage_container_name=${STORAGE}"
 ```
+
+This deploys:
+- Unity Catalog resources (`base_resources_setup.yml`)
+- Spotify ETL workflow job (`spotify_dab.job.yml`)
+
+📖 See [../databricks/DEPLOYMENT.md](../databricks/DEPLOYMENT.md) for full deployment guide.
 
 ### 3. Azure Data Factory Configuration
 
@@ -571,6 +559,6 @@ This project is provided as-is for educational and development purposes.
 
 ---
 
-**Last Updated:** April 4, 2026  
+**Last Updated:** April 19, 2026  
 **Terraform Version:** >= 1.0  
 **Azure Provider Version:** ~> 4.0
