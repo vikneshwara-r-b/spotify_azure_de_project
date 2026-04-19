@@ -37,6 +37,7 @@ resources:
           depends_on:
             - task_key: silver_transformation_task
           for_each_task:
+            concurrency: 4
             inputs: |
               [
                 {
