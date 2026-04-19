@@ -1,0 +1,12 @@
+{
+	"name": "adf-spotify-v2",
+	"properties": {
+		"globalParameters": {
+			"key_vault_url": {
+				"type": "string",
+				"value": "https://kv-spotify-v2.vault.azure.net/"
+			}
+		}
+	},
+	"location": "eastus"
+}
