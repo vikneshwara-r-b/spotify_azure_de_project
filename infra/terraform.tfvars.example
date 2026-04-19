@@ -35,7 +35,7 @@ adf_name = "adf-spotify"
 # Set enable_adf_github to true and provide GitHub details
 # Note: You'll need to configure GitHub PAT in ADF Studio after deployment
 enable_adf_github     = true
-adf_github_account    = "vikneshwara-r-b"
+adf_github_account    = "<your-github-username>"
 adf_github_repository = "spotify_azure_de_project"
 adf_github_branch     = "main"
 adf_github_root_folder = "/"
@@ -118,19 +118,12 @@ logic_app_connection_name = "azuretablesconnection"
 # Databricks Unity Catalog
 # ============================================================================
 
-# Storage credential name
+# Storage credential name (still managed by Terraform)
 unity_catalog_storage_credential_name = "spotify_adls_credential"
 
-# External location names
-unity_catalog_external_location_bronze = "spotify_bronze"
-unity_catalog_external_location_silver = "spotify_silver"
-unity_catalog_external_location_gold   = "spotify_gold"
-
-# Catalog and schema names
-unity_catalog_name         = "spotify_catalog"
-unity_catalog_schema_bronze = "bronze"
-unity_catalog_schema_silver = "silver"
-unity_catalog_schema_gold   = "gold"
+# NOTE: External locations, catalog, and schemas are now managed by
+# Databricks Asset Bundles (DAB), not Terraform.
+# See: databricks/resources/base_resources_setup.yml
 
 # ============================================================================
 # Tags
