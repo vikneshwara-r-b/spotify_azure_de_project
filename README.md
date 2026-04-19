@@ -314,18 +314,22 @@ terraform apply
 
 #### **Step 5: Deploy Databricks Asset Bundle**
 
-**From Databricks Workspace** (recommended):
+From your local machine (or Databricks terminal):
 
-1. In cloned repo, open a notebook or terminal
-2. Navigate to: `databricks/spotify_dab/`
-3. Run deployment commands:
+1. Configure Databricks CLI:
    ```bash
-   databricks bundle deploy --target dev \
-     --var="adls_storage_container_name=$(cd ../../infra && terraform output -raw storage_account_name)" \
-     --var="adf_service_principal_id=$(cd ../../infra && terraform output -raw adf_managed_identity_application_id)"
+   databricks configure
+   # Enter workspace URL and Personal Access Token
    ```
 
-4. **📝 IMPORTANT**: Note the **Job ID** from deployment output (needed for Step 6)
+2. Navigate to the bundle directory and deploy:
+   ```bash
+   cd databricks
+   DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
+     --var="adls_storage_container_name=$(cd ../infra && terraform output -raw storage_account_name)"
+   ```
+
+3. **📝 IMPORTANT**: Note the **Job ID** from deployment output (needed for Step 6)
 
 ---
 
@@ -388,7 +392,7 @@ terraform apply
 
 📖 **Detailed guides**: 
 - Infrastructure: [infra/README.md](infra/README.md)
-- Databricks Deployment: [databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)
+- Databricks Deployment: [databricks/DEPLOYMENT.md](databricks/DEPLOYMENT.md)
 - SQL Scripts: [sql_scripts/README.md](sql_scripts/README.md)
 - Pipelines: [pipeline/README.md](pipeline/README.md)
 
@@ -438,27 +442,26 @@ spotify_azure_de_project/
 ├── 🏭 factory/                        ← ADF Factory Configuration
 │   └── adf-spotify-v1.json            ← Global parameters
 │
-└── 🔥 databricks/                     ← Databricks Processing Layer
-    ├── README.md                      ← Databricks folder overview
-    └── spotify_dab/                   ← Databricks Asset Bundle
-        ├── README.md                  ← DAB project documentation
-        ├── DEPLOYMENT.md              ← Deployment guide
-        ├── databricks.yml             ← Bundle configuration
-        ├── pyproject.toml             ← Python dependencies
-        ├── .env.example               ← Environment variables template
-        │
-        ├── src/                       ← Transformation Notebooks
-        │   ├── silver_dimensions.ipynb← Bronze → Silver (CDC)
-        │   └── gold_dimensions.ipynb  ← Silver → Gold (SCD Type 2)
-        │
-        ├── utils/                     ← Reusable Python Modules
-        │   └── transformations.py     ← CDC & SCD helper functions
-        │
-        ├── resources/                 ← Databricks Workflow Definitions
-        │   └── spotify_dab.job.yml    ← Workflow job configuration
-        │
-        └── jinja/                     ← Jinja templates (optional)
-            └── jinja_notebook.ipynb
+└── 🔥 databricks/                     ← Databricks Asset Bundle (bundle root)
+    ├── README.md                      ← DAB project documentation
+    ├── DEPLOYMENT.md                  ← Deployment guide
+    ├── databricks.yml                 ← Bundle configuration
+    ├── pyproject.toml                 ← Python dependencies
+    ├── .env.example                   ← Environment variables template
+    │
+    ├── src/                           ← Transformation Notebooks
+    │   ├── silver_dimensions.ipynb    ← Bronze → Silver (CDC)
+    │   └── gold_dimensions.ipynb      ← Silver → Gold (SCD Type 2)
+    │
+    ├── utils/                         ← Reusable Python Modules
+    │   └── transformations.py         ← CDC & SCD helper functions
+    │
+    ├── resources/                     ← Databricks Resource Definitions
+    │   ├── base_resources_setup.yml   ← Unity Catalog (catalog, schemas, ext. locations)
+    │   └── spotify_dab.job.yml        ← Workflow job configuration
+    │
+    └── jinja/                         ← Jinja templates (optional)
+        └── jinja_notebook.ipynb
 ```
 
 ---
@@ -528,8 +531,8 @@ spotify_azure_de_project/
 |--------------|-------------|
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Comprehensive architecture deep-dive |
 | **[infra/README.md](infra/README.md)** | Terraform infrastructure deployment guide |
-| **[databricks/spotify_dab/README.md](databricks/spotify_dab/README.md)** | Databricks Asset Bundle documentation |
-| **[databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)** | DAB deployment methods & troubleshooting |
+| **[databricks/README.md](databricks/README.md)** | Databricks Asset Bundle documentation |
+| **[databricks/DEPLOYMENT.md](databricks/DEPLOYMENT.md)** | DAB deployment methods & troubleshooting |
 | **[sql_scripts/README.md](sql_scripts/README.md)** | SQL schema & data loading guide |
 | **[pipeline/README.md](pipeline/README.md)** | ADF pipeline architecture & configuration |
 | **[linkedService/README.md](linkedService/README.md)** | ADF linked services documentation |
@@ -565,7 +568,7 @@ az datafactory pipeline create-run \
 
 ### **Run Databricks Workflow**
 ```bash
-cd databricks/spotify_dab
+cd databricks
 databricks bundle run spotify_etl_job --target dev
 ```
 
@@ -644,7 +647,7 @@ ORDER BY active_start_date_time DESC;
 
 1. **Documentation**: Start with [ARCHITECTURE.md](ARCHITECTURE.md) for system design
 2. **Deployment Issues**: Check [infra/README.md](infra/README.md) troubleshooting section
-3. **Databricks Problems**: See [databricks/spotify_dab/DEPLOYMENT.md](databricks/spotify_dab/DEPLOYMENT.md)
+3. **Databricks Problems**: See [databricks/DEPLOYMENT.md](databricks/DEPLOYMENT.md)
 4. **Pipeline Debugging**: Refer to [pipeline/README.md](pipeline/README.md)
 
 ---
@@ -686,5 +689,5 @@ This project is provided as-is for educational and portfolio purposes.
 
 **⭐ Star this repo if you found it helpful!**
 
-**Last Updated**: April 4, 2026  
+**Last Updated**: April 19, 2026  
 **Status**: Production-Ready Demo Project
