@@ -1,0 +1,24 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "adf-spotify-v2"
+		},
+		"ls_adls_storage_account_connection_properties_typeProperties_url": {
+			"value": "@{linkedService().adls_source_url}"
+		},
+		"ls_kv_connection_properties_typeProperties_baseUrl": {
+			"value": "@{linkedService().key_vault_url}"
+		},
+		"ls_mssql_server_connection_properties_typeProperties_server": {
+			"value": "@{linkedService().db_server_name}"
+		},
+		"ls_mssql_server_connection_properties_typeProperties_database": {
+			"value": "@{linkedService().db_name}"
+		},
+		"ls_mssql_server_connection_properties_typeProperties_userName": {
+			"value": "@{linkedService().db_user_name}"
+		}
+	}
+}

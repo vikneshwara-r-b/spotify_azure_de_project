@@ -1,0 +1,10 @@
+{
+	"key_vault_url": {
+		"type": "string",
+		"value": "https://kv-spotify-v2.vault.azure.net/"
+	},
+	"databricks_workflow_job_id": {
+		"type": "string",
+		"value": "1102882150479634"
+	}
+}
