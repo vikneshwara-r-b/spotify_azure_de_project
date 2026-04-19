@@ -1,0 +1,37 @@
+# Databricks Setup for Spotify ETL Workflow Job
+resources:
+  catalogs:
+    spotify_catalog:
+      name: spotify_catalog
+      comment: 'Main catalog for Spotify data engineering project'
+
+  schemas:
+    bronze_schema:
+      name: bronze
+      catalog_name: ${resources.catalogs.spotify_catalog.name}
+      comment: 'Bronze Schema in spotify catalog'
+    silver_schema:
+      name: silver
+      catalog_name: ${resources.catalogs.spotify_catalog.name}
+      comment: 'Silver Schema in spotify catalog'
+    gold_schema:
+      name: gold
+      catalog_name: ${resources.catalogs.spotify_catalog.name}
+      comment: 'Gold Schema in spotify catalog'
+
+  external_locations:
+   ext_bronze_location:
+      name: spotify_ext_bronze
+      url: 'abfss://bronze@${var.adls_storage_container_name}.dfs.core.windows.net/'
+      credential_name: spotify_adls_credential
+      comment: 'External location created by Databricks Asset Bundles for Bronze layer'
+   ext_silver_location:
+      name: spotify_ext_silver
+      url: 'abfss://silver@${var.adls_storage_container_name}.dfs.core.windows.net/'
+      credential_name: spotify_adls_credential
+      comment: 'External location created by Databricks Asset Bundles for Silver layer'
+   ext_gold_location:
+      name: spotify_ext_gold
+      url: 'abfss://gold@${var.adls_storage_container_name}.dfs.core.windows.net/'
+      credential_name: spotify_adls_credential
+      comment: 'External location created by Databricks Asset Bundles for Gold layer'
