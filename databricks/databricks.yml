@@ -2,7 +2,7 @@
 # See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
 bundle:
   name: spotify_dab
-  uuid: 22a068ba-5021-46f4-8a26-b16bcf60307b
+  engine: direct
 
 # Variables - Set via environment variables before deployment
 variables:
