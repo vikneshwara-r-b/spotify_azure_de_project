@@ -649,11 +649,11 @@ databricks configure
 databricks bundle validate --target dev
 
 # Deploy to dev workspace
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target dev \
+databricks bundle deploy --target dev \
   --var="adls_storage_container_name=<your-storage-account-name>"
 
 # Deploy to prod workspace
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
+databricks bundle deploy --target prod \
   --var="adls_storage_container_name=<your-storage-account-name>"
 
 # Get storage account name from Terraform:
@@ -878,7 +878,7 @@ databricks configure
 git add .
 git commit -m "Update transformations"
 git push
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
+databricks bundle deploy --target prod \
   --var="adls_storage_container_name=<your-storage-account-name>"
 ```
 
@@ -904,7 +904,6 @@ python
 |----------|----------|-------------|----------|
 | `DATABRICKS_HOST` | ✅ Yes | Workspace URL | `databricks configure` or `terraform output databricks_workspace_url` |
 | `ADLS_STORAGE_CONTAINER_NAME` | ✅ Yes | ADLS storage account name | `terraform output -raw storage_account_name` |
-| `DATABRICKS_BUNDLE_ENGINE` | ✅ Yes | Set to `direct` | Hard-coded as `direct` |
 
 > `USER_EMAIL` and `ADF_SERVICE_PRINCIPAL_ID` are no longer variables in `databricks.yml`.
 

@@ -27,14 +27,14 @@
 
 ---
 
-## 🔧 Deployment Method 1: Using `DATABRICKS_BUNDLE_ENGINE=direct` (RECOMMENDED)
+## 🔧 Deployment Method 1: Using --var Flag (RECOMMENDED)
 
 This is the canonical deployment command for this project:
 
 ```bash
 cd databricks
 
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
+databricks bundle deploy --target prod \
   --var="adls_storage_container_name=<your-adls-storage-account-name>"
 ```
 
@@ -47,7 +47,7 @@ cd ../infra && terraform output -raw storage_account_name
 ```bash
 cd databricks
 
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target dev \
+databricks bundle deploy --target dev \
   --var="adls_storage_container_name=<your-adls-storage-account-name>"
 ```
 
@@ -60,7 +60,6 @@ DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target dev \
 ```bash
 export DATABRICKS_HOST="https://$(cd ../infra && terraform output -raw databricks_workspace_url)"
 export ADLS_STORAGE_CONTAINER_NAME=$(cd ../infra && terraform output -raw storage_account_name)
-export DATABRICKS_BUNDLE_ENGINE=direct
 ```
 
 ### Step 2: Deploy Bundle
@@ -98,7 +97,6 @@ cd databricks
 
 # Load environment variables
 export $(grep -v '^#' .env | xargs)
-export DATABRICKS_BUNDLE_ENGINE=direct
 
 # Deploy
 databricks bundle deploy --target dev
@@ -106,14 +104,14 @@ databricks bundle deploy --target dev
 
 ---
 
-## 🔧 Deployment Method 4: Using `--var` Flag
+## 🔧 Deployment Method 4: Using Shell Substitution
 
 ```bash
 cd databricks
 
 STORAGE_CONTAINER=$(cd ../infra && terraform output -raw storage_account_name)
 
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target dev \
+databricks bundle deploy --target dev \
   --var="adls_storage_container_name=${STORAGE_CONTAINER}"
 ```
 
@@ -123,7 +121,7 @@ DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target dev \
 
 ```bash
 cd databricks && \
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
+databricks bundle deploy --target prod \
   --var="adls_storage_container_name=$(cd ../infra && terraform output -raw storage_account_name)"
 ```
 
@@ -135,7 +133,6 @@ DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
 |----------|-------------|----------|----------|
 | `DATABRICKS_HOST` | Workspace URL | ✅ Yes | `terraform output -raw databricks_workspace_url` |
 | `ADLS_STORAGE_CONTAINER_NAME` | Storage account name | ✅ Yes | `terraform output -raw storage_account_name` |
-| `DATABRICKS_BUNDLE_ENGINE` | Use `direct` engine | ✅ Yes | Set to `direct` |
 
 > **Note**: `USER_EMAIL` and `ADF_SERVICE_PRINCIPAL_ID` are no longer required. The bundle `databricks.yml` no longer defines `permissions` blocks — job permissions are managed separately.
 
@@ -154,7 +151,7 @@ databricks bundle validate --target dev
 
 ```bash
 # Deploy
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target dev \
+databricks bundle deploy --target dev \
   --var="adls_storage_container_name=<storage-account-name>"
 
 # Run the job
@@ -201,9 +198,9 @@ The bundle deploys the following resources to Databricks:
 
 **Cause**: Environment variables not set or not exported
 
-**Fix**: Use `--var` flags with `DATABRICKS_BUNDLE_ENGINE=direct`:
+**Fix**: Use `--var` flags:
 ```bash
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target dev \
+databricks bundle deploy --target dev \
   --var="adls_storage_container_name=<storage-account-name>"
 ```
 
@@ -238,7 +235,7 @@ cd ../infra && terraform apply
 cd databricks && databricks bundle validate --target prod
 
 # Deploy to prod
-cd databricks && DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
+cd databricks && databricks bundle deploy --target prod \
   --var="adls_storage_container_name=$(cd ../infra && terraform output -raw storage_account_name)"
 
 # Run job
@@ -256,7 +253,7 @@ cd databricks && databricks bundle destroy --target dev
 - [ ] Storage credential `spotify_adls_credential` exists in Databricks workspace
 - [ ] Databricks CLI installed and configured (`databricks configure`)
 - [ ] Bundle validated (`databricks bundle validate`)
-- [ ] Bundle deployed with `DATABRICKS_BUNDLE_ENGINE=direct`
+- [ ] Bundle deployed successfully
 - [ ] Unity Catalog resources verified (catalog, schemas, external locations)
 - [ ] Job visible in Databricks Workflows UI
 - [ ] ADF pipeline tested successfully

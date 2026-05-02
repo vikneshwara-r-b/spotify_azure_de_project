@@ -300,36 +300,68 @@ terraform apply
 
 ---
 
-#### **Step 4: Clone Repository in Databricks Workspace**
+#### **Step 4: Configure Databricks CLI**
 
-1. Open Databricks workspace: `terraform output databricks_workspace_url`
-2. Navigate to: **Repos** → **Add Repo**
-3. Configure:
-   - **Git repository URL**: `https://github.com/vikneshwara-r-b/spotify_azure_de_project.git`
-   - **Git provider**: GitHub
-   - **Repository name**: `spotify_azure_de_project`
-4. Click **Create Repo**
+From your local machine:
+
+1. Install Databricks CLI (if not already installed):
+   ```bash
+   pip install databricks-cli
+   # or on macOS
+   brew install databricks
+   ```
+
+2. Configure authentication to your Databricks workspace:
+   ```bash
+   databricks configure
+   ```
+
+3. When prompted, enter:
+   - **Databricks Host**: Get from `cd infra && terraform output databricks_workspace_url`
+     - Format: `https://adb-<workspace-id>.<random>.azuredatabricks.net`
+   - **Token**: Generate a Personal Access Token (PAT):
+     - In Databricks workspace → **User Settings** → **Developer** → **Access Tokens** → **Manage**
+     - Click **Generate New Token** → Set comment (e.g., "CLI Access") → Lifetime (e.g., 90 days)
+     - Copy the token (save it securely — it won't be shown again)
+
+4. Verify connection:
+   ```bash
+   databricks workspace list /
+   ```
 
 ---
 
 #### **Step 5: Deploy Databricks Asset Bundle**
 
-From your local machine (or Databricks terminal):
+From your local machine:
 
-1. Configure Databricks CLI:
-   ```bash
-   databricks configure
-   # Enter workspace URL and Personal Access Token
-   ```
-
-2. Navigate to the bundle directory and deploy:
+1. Navigate to the bundle directory:
    ```bash
    cd databricks
-   DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
+   ```
+
+2. Get the storage account name from Terraform:
+   ```bash
+   cd ../infra
+   terraform output storage_account_name
+   # Copy this value (e.g., sadatalake1a2b3c)
+   cd ../databricks
+   ```
+
+3. Deploy the bundle:
+   ```bash
+   databricks bundle deploy --target prod \
+     --var="adls_storage_container_name=<paste-storage-account-name-from-step-2>"
+   ```
+
+   **Alternative** (if shell substitution works in your environment):
+   ```bash
+   databricks bundle deploy --target prod \
      --var="adls_storage_container_name=$(cd ../infra && terraform output -raw storage_account_name)"
    ```
 
-3. **📝 IMPORTANT**: Note the **Job ID** from deployment output (needed for Step 6)
+4. **📝 IMPORTANT**: Note the **Job ID** from deployment output (needed for Step 6)
+   - Look for output like: `✅ Job created: https://.../?o=...#job/<JOB_ID>`
 
 ---
 

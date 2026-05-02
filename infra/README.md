@@ -296,7 +296,7 @@ cd ../databricks
 STORAGE=$(cd ../infra && terraform output -raw storage_account_name)
 
 # Deploy the bundle (creates catalog, schemas, external locations, job)
-DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target prod \
+databricks bundle deploy --target prod \
   --var="adls_storage_container_name=${STORAGE}"
 ```
 
