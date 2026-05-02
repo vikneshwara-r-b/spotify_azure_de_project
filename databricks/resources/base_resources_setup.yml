@@ -6,10 +6,6 @@ resources:
       comment: 'Main catalog for Spotify data engineering project'
 
   schemas:
-    bronze_schema:
-      name: bronze
-      catalog_name: ${resources.catalogs.spotify_catalog.name}
-      comment: 'Bronze Schema in spotify catalog'
     silver_schema:
       name: silver
       catalog_name: ${resources.catalogs.spotify_catalog.name}
